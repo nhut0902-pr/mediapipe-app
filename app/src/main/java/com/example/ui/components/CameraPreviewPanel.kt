@@ -138,11 +138,11 @@ fun CameraPreviewPanel(
                             }
                             val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
                             cameraProviderFuture.addListener({
-                                val cameraProvider = cameraProviderFuture.get()
-                                val previewUseCase = Preview.Builder().build().apply {
-                                    surfaceProvider = previewView.surfaceProvider
-                                }
                                 try {
+                                    val cameraProvider = cameraProviderFuture.get()
+                                    val previewUseCase = Preview.Builder().build().apply {
+                                        setSurfaceProvider(previewView.surfaceProvider)
+                                    }
                                     cameraProvider.unbindAll()
                                     cameraProvider.bindToLifecycle(
                                         lifecycleOwner,
@@ -150,7 +150,8 @@ fun CameraPreviewPanel(
                                         previewUseCase
                                     )
                                 } catch (e: Exception) {
-                                    // Fallback if binding fails
+                                    // Fallback if camera provider or binding fails
+                                    e.printStackTrace()
                                 }
                             }, androidx.core.content.ContextCompat.getMainExecutor(ctx))
                             previewView
