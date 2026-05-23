@@ -22,15 +22,15 @@ class ExampleRobolectricTest {
   @Test
   fun `update info model properties`() {
     val info = com.example.data.UpdateInfo(
-      versionCode = 4,
-      versionName = "1.3",
-      apkUrl = "https://github.com/nhut0902-pr/mediapipe-app/releases/download/v1.3/app-release.apk",
+      versionCode = 5,
+      versionName = "1.4",
+      apkUrl = "https://github.com/nhut0902-pr/mediapipe-app/releases/download/v1.4/app-release.apk",
       forceUpdate = false,
       changelog = "Sửa lỗi và cải thiện hiệu năng"
     )
-    assertEquals(4, info.versionCode)
-    assertEquals("1.3", info.versionName)
-    assertEquals("https://github.com/nhut0902-pr/mediapipe-app/releases/download/v1.3/app-release.apk", info.apkUrl)
+    assertEquals(5, info.versionCode)
+    assertEquals("1.4", info.versionName)
+    assertEquals("https://github.com/nhut0902-pr/mediapipe-app/releases/download/v1.4/app-release.apk", info.apkUrl)
     assertEquals(false, info.forceUpdate)
     assertEquals("Sửa lỗi và cải thiện hiệu năng", info.changelog)
   }
