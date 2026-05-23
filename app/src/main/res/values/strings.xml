@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">AppLock</string>
     <string name="accessibility_service_description">Dịch vụ giám sát thông minh hỗ trợ khóa ứng dụng riêng tư của hệ thống AppLock sinh trắc học.</string>
+    <string name="accessibility_desc">Dịch vụ bảo mật giám sát thông tin mở ứng dụng hỗ trợ tính năng khóa vân tay và mật mã.</string>
 </resources>

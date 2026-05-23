@@ -3,6 +3,7 @@ package com.example.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -146,33 +147,95 @@ fun AppListScreen(
                         Spacer(modifier = Modifier.height(6.dp))
                         
                         Text(
-                            "AppLock cần quyền Hỗ trợ tiếp cận (Accessibility) & Vẽ đè màn hình (Overlay) để tự động khóa ứng dụng khi mở.",
+                            "AppLock cần quyền Hỗ trợ tiếp cận (Accessibility) & Vẽ đè màn hình (Overlay) để khóa ứng dụng bảo mật.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f)
                         )
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        Button(
-                            onClick = {
-                                if (!isOverlayEnabled) {
-                                    val intent = Intent(
-                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                        Uri.parse("package:${context.packageName}")
+
+                        // Guide for Android 13+ Restricted Settings
+                        if (!isAccessibilityEnabled && Build.VERSION.SDK_INT >= 33) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "LƯU Ý QUAN TRỌNG CHO ANDROID 13/14/15/16:",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                "Nếu hệ thống báo 'Ứng dụng đã bị từ chối cấp quyền' (Restricted Settings), hãy bỏ chặn theo 3 bước sau:",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f),
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            
+                            val steps = listOf(
+                                "Bước 1: Mở Cài đặt hệ thống -> Ứng dụng -> Chọn AppLock.",
+                                "Bước 2: Nhấn nút ⋮ (3 chấm) ở góc trên bên phải màn hình thông tin ứng dụng AppLock.",
+                                "Bước 3: Chọn 'Cho phép cài đặt bị hạn chế' (Allow restricted settings), xác nhận mật khẩu điện thoại.",
+                                "Bước 4: Trở lại đây, nhấn nút bên dưới để bật Hỗ trợ tiếp cận AppLock thành công!"
+                            )
+                            
+                            steps.forEach { step ->
+                                Row(
+                                    modifier = Modifier.padding(vertical = 3.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Text(
+                                        "• ",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        style = MaterialTheme.typography.bodySmall
                                     )
-                                    context.startActivity(intent)
-                                } else if (!isAccessibilityEnabled) {
-                                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                    context.startActivity(intent)
+                                    Text(
+                                        text = step,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
+                                    )
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.onErrorContainer,
-                                contentColor = MaterialTheme.colorScheme.errorContainer
-                            ),
-                            modifier = Modifier.align(Alignment.End)
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(14.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
                         ) {
-                            Text("Thực hiện")
+                            if (!isOverlayEnabled) {
+                                Button(
+                                    onClick = {
+                                        val intent = Intent(
+                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                            Uri.parse("package:${context.packageName}")
+                                        )
+                                        context.startActivity(intent)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.onErrorContainer,
+                                        contentColor = MaterialTheme.colorScheme.errorContainer
+                                    ),
+                                    modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Text("Cấp quyền Vẽ đè")
+                                }
+                            }
+                            if (!isAccessibilityEnabled) {
+                                Button(
+                                    onClick = {
+                                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                        context.startActivity(intent)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.onErrorContainer,
+                                        contentColor = MaterialTheme.colorScheme.errorContainer
+                                    )
+                                ) {
+                                    Text("Bật Hỗ trợ tiếp cận")
+                                }
+                            }
                         }
                     }
                 }
