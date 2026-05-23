@@ -1,24 +1,31 @@
-name: Build Android APK
+name: Build & Auto Release Android App
 
 on:
   push:
     branches:
       - main
       - master
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
       - master
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    name: Build Debug APK
+    name: Build & Release App
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -32,44 +39,119 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build Debug APK
+      - name: Build Android App
         run: |
-          # Tạo tệp .env chứa khóa giả lập để xây dựng ứng dụng thành công
+          # Generate dummy .env file if it does not exist
           echo "GEMINI_API_KEY=AIzaSyFakeKey_Placeholder" > .env
-          echo "Đã khởi tạo thành công tệp .env tạm thời."
+          echo "Successfully initialized temporary .env file."
 
-          # Tìm kiếm tệp cấu hình Gradle một cách an toàn, tránh lỗi xargs khi không tìm thấy
+          # Search for primary build files safely
           GRADLE_FILE=$(find . -type f \( -name "settings.gradle.kts" -o -name "settings.gradle" -o -name "build.gradle.kts" -o -name "build.gradle" \) | head -n 1)
           if [ -n "$GRADLE_FILE" ]; then
             GRADLE_ROOT=$(dirname "$GRADLE_FILE")
-            echo "Tìm thấy dự án Gradle tại thư mục: $GRADLE_ROOT"
+            echo "Gradle project found at: $GRADLE_ROOT"
             cd "$GRADLE_ROOT"
-            # Đảm bảo .env nằm đúng thư mục gốc Gradle
+            
+            # Write key configs for secrets gradle plug-in
             echo "GEMINI_API_KEY=AIzaSyFakeKey_Placeholder" > .env
             
-            # Giải mã debug.keystore từ base64
+            # Decode debug keystore base64
             if [ -f "debug.keystore.base64" ]; then
-              echo "Phát hiện debug.keystore.base64, đang giải mã..."
+              echo "Decoding debug.keystore.base64..."
               base64 -d debug.keystore.base64 > debug.keystore
             elif [ -f "../debug.keystore.base64" ]; then
-              echo "Phát hiện debug.keystore.base64 ở thư mục cha, đang giải mã..."
+              echo "Decoding parent debug.keystore.base64..."
               base64 -d ../debug.keystore.base64 > debug.keystore
             else
-              echo "Không tìm thấy debug.keystore.base64. Đang tự động tạo debug.keystore mới..."
+              echo "No debug.keystore.base64 found. Creating a fresh temporary layout..."
               keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
             fi
 
-            gradle :app:assembleDebug --no-daemon
-            cd -
             mkdir -p build-output
-            cp "$GRADLE_ROOT"/app/build/outputs/apk/debug/app-debug.apk build-output/
+
+            # If release is triggered from a tag, build release build. Else compile debug for testing.
+            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              echo "Building production release APK..."
+              gradle :app:assembleRelease --no-daemon
+              
+              RELEASE_APK=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+              if [ -n "$RELEASE_APK" ]; then
+                cp "$RELEASE_APK" build-output/app-release.apk
+                echo "Successfully copied release APK: $RELEASE_APK to build-output/app-release.apk"
+              else
+                echo "Error: Release APK not found. Falling back to build debug mode."
+                gradle :app:assembleDebug --no-daemon
+                cp app/build/outputs/apk/debug/app-debug.apk build-output/app-release.apk
+              fi
+            else
+              echo "Standard branch commit: compiling Debug APK only."
+              gradle :app:assembleDebug --no-daemon
+              cp app/build/outputs/apk/debug/app-debug.apk build-output/app-debug.apk
+            fi
+            
+            cd -
           else
-            echo "Lỗi: Không tìm thấy tệp settings.gradle hoặc build.gradle nào trong toàn bộ thư mục!"
+            echo "Error: Gradle settings/build files could not be located!"
             exit 1
           fi
 
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
+      - name: Create or Update GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
-          name: GestureQuest-Arena-Debug-APK
-          path: build-output/app-debug.apk
+          files: build-output/app-release.apk
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Bản cập nhật ${{ github.ref_name }}
+            
+            Ứng dụng của bạn đã sẵn sàng với phiên bản ${{ github.ref_name }}.
+            
+            ### Cách cài đặt:
+            1. Tải tệp `app-release.apk` bên dưới.
+            2. Mở tệp để nâng cấp trực tiếp trên thiết bị Android của bạn.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate version.json & Push to GitHub raw path
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION_CODE=$(grep 'versionCode =' app/build.gradle.kts | head -n 1 | awk '{print $3}')
+          VERSION_NAME=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | tr -d '"' | awk '{print $3}')
+          TAG_NAME="${{ github.ref_name }}"
+          
+          if [[ "$TAG_NAME" =~ ^v[0-9] ]]; then
+            VERSION_NAME="${TAG_NAME#v}"
+          fi
+          
+          echo "Generated version configuration: Code=$VERSION_CODE, Name=$VERSION_NAME for tag $TAG_NAME"
+          
+          # Create JSON file matching the standard Auto-Update schema
+          cat <<EOF > version.json
+{
+  "versionCode": $VERSION_CODE,
+  "versionName": "$VERSION_NAME",
+  "apkUrl": "https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/app-release.apk",
+  "forceUpdate": false,
+  "changelog": "Cập nhật ứng dụng lên phiên bản mới $VERSION_NAME. Cải thiện hiệu suất, tối ưu hóa bộ nhớ và sửa lỗi."
+}
+EOF
+          
+          # Commit the updated version.json back to default branch
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
+          echo "Auto-detected default branch: $DEFAULT_BRANCH"
+          
+          git fetch origin $DEFAULT_BRANCH
+          git checkout $DEFAULT_BRANCH
+          git pull origin $DEFAULT_BRANCH
+          
+          git add version.json
+          git commit -m "chore: auto-update version.json to match $TAG_NAME" || echo "No modifications to commit"
+          git push origin $DEFAULT_BRANCH
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
