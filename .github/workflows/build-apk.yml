@@ -129,15 +129,13 @@ jobs:
           echo "Generated version configuration: Code=$VERSION_CODE, Name=$VERSION_NAME for tag $TAG_NAME"
           
           # Create JSON file matching the standard Auto-Update schema
-          cat <<EOF > version.json
-{
-  "versionCode": $VERSION_CODE,
-  "versionName": "$VERSION_NAME",
-  "apkUrl": "https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/app-release.apk",
-  "forceUpdate": false,
-  "changelog": "Cập nhật ứng dụng lên phiên bản mới $VERSION_NAME. Cải thiện hiệu suất, tối ưu hóa bộ nhớ và sửa lỗi."
-}
-EOF
+          echo "{" > version.json
+          echo "  \"versionCode\": $VERSION_CODE," >> version.json
+          echo "  \"versionName\": \"$VERSION_NAME\"," >> version.json
+          echo "  \"apkUrl\": \"https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/app-release.apk\"," >> version.json
+          echo "  \"forceUpdate\": false," >> version.json
+          echo "  \"changelog\": \"Cập nhật ứng dụng lên phiên bản mới $VERSION_NAME. Cải thiện hiệu suất, tối ưu hóa bộ nhớ và sửa lỗi.\"" >> version.json
+          echo "}" >> version.json
           
           # Commit the updated version.json back to default branch
           git config --global user.name "github-actions[bot]"
