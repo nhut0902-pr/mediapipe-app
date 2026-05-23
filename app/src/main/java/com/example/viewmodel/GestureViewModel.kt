@@ -114,8 +114,8 @@ data class HomeAppliance(
     val name: String,
     val id: String,
     val emoji: String,
-    var isOn: Boolean,
-    var value: String,
+    val isOn: Boolean,
+    val value: String,
     val gestureMapped: GestureType
 )
 
@@ -855,11 +855,14 @@ class GestureViewModel : ViewModel() {
             val updatedAppliances = ls4Appliances.value.map { item ->
                 if (item.gestureMapped == gesture) {
                     val flag = !item.isOn
-                    item.isOn = flag
-                    item.value = if (flag) "Hoạt Động 🟢" else "Đang Tắt 🔴"
                     _appScore.value += 5
+                    item.copy(
+                        isOn = flag,
+                        value = if (flag) "Hoạt Động 🟢" else "Đang Tắt 🔴"
+                    )
+                } else {
+                    item
                 }
-                item
             }
             ls4Appliances.value = updatedAppliances
         }
@@ -1550,11 +1553,14 @@ class GestureViewModel : ViewModel() {
         val list = ls4Appliances.value.map { item ->
             if (item.id == applianceId) {
                 val flag = !item.isOn
-                item.isOn = flag
-                item.value = if (flag) "Hoạt Động 🟢" else "Đang Tắt 🔴"
                 _appScore.value += 10
+                item.copy(
+                    isOn = flag,
+                    value = if (flag) "Hoạt Động 🟢" else "Đang Tắt 🔴"
+                )
+            } else {
+                item
             }
-            item
         }
         ls4Appliances.value = list
     }

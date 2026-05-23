@@ -34,14 +34,20 @@ jobs:
 
       - name: Build Debug APK
         run: |
-          # Tư duy tự động dò tìm thư mục gốc Gradle (tránh lỗi cấu trúc thư mục lồng nhau)
-          GRADLE_ROOT=$(find . -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1 | xargs dirname)
-          echo "Tìm thấy dự án Gradle tại: $GRADLE_ROOT"
-          cd "$GRADLE_ROOT"
-          gradle :app:assembleDebug --no-daemon
-          cd -
-          mkdir -p build-output
-          cp "$GRADLE_ROOT"/app/build/outputs/apk/debug/app-debug.apk build-output/
+          # Tìm kiếm tệp cấu hình Gradle một cách an toàn, tránh lỗi xargs khi không tìm thấy
+          GRADLE_FILE=$(find . -type f \( -name "settings.gradle.kts" -o -name "settings.gradle" -o -name "build.gradle.kts" -o -name "build.gradle" \) | head -n 1)
+          if [ -n "$GRADLE_FILE" ]; then
+            GRADLE_ROOT=$(dirname "$GRADLE_FILE")
+            echo "Tìm thấy dự án Gradle tại thư mục: $GRADLE_ROOT"
+            cd "$GRADLE_ROOT"
+            gradle :app:assembleDebug --no-daemon
+            cd -
+            mkdir -p build-output
+            cp "$GRADLE_ROOT"/app/build/outputs/apk/debug/app-debug.apk build-output/
+          else
+            echo "Lỗi: Không tìm thấy tệp settings.gradle hoặc build.gradle nào trong toàn bộ thư mục!"
+            exit 1
+          fi
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
