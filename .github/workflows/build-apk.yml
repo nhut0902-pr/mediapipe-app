@@ -46,6 +46,19 @@ jobs:
             cd "$GRADLE_ROOT"
             # Đảm bảo .env nằm đúng thư mục gốc Gradle
             echo "GEMINI_API_KEY=AIzaSyFakeKey_Placeholder" > .env
+            
+            # Giải mã debug.keystore từ base64
+            if [ -f "debug.keystore.base64" ]; then
+              echo "Phát hiện debug.keystore.base64, đang giải mã..."
+              base64 -d debug.keystore.base64 > debug.keystore
+            elif [ -f "../debug.keystore.base64" ]; then
+              echo "Phát hiện debug.keystore.base64 ở thư mục cha, đang giải mã..."
+              base64 -d ../debug.keystore.base64 > debug.keystore
+            else
+              echo "Không tìm thấy debug.keystore.base64. Đang tự động tạo debug.keystore mới..."
+              keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            fi
+
             gradle :app:assembleDebug --no-daemon
             cd -
             mkdir -p build-output
