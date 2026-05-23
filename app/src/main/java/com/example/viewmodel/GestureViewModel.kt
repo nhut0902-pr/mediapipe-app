@@ -170,6 +170,7 @@ class GestureViewModel : ViewModel() {
     // Master list of 21 landmarks
     init {
         updateSkeletonLandmarks()
+        startGameLoop() // Tự động khởi chạy vòng lặp trò chơi để cập nhật trạng thái tiện ích đời sống liên tục
     }
 
     // Update coordinates derived from the 5 finger flexion states to show a beautiful interactive hand
@@ -846,6 +847,38 @@ class GestureViewModel : ViewModel() {
                     ls8Display.value = "Khởi tạo máy tính! Xòe 1-5 ngón để nhập số hạng 1."
                 }
                 else -> {}
+            }
+        }
+
+        // Smart Home gesture trigger
+        if (_selectedLifeApp.value == LifeAppType.SMART_HOME) {
+            val updatedAppliances = ls4Appliances.value.map { item ->
+                if (item.gestureMapped == gesture) {
+                    val flag = !item.isOn
+                    item.isOn = flag
+                    item.value = if (flag) "Hoạt Động 🟢" else "Đang Tắt 🔴"
+                    _appScore.value += 5
+                }
+                item
+            }
+            ls4Appliances.value = updatedAppliances
+        }
+
+        // Music Conductor gesture trigger
+        if (_selectedLifeApp.value == LifeAppType.MUSIC_CONDUCTOR) {
+            if (gesture == GestureType.THUMBS_UP) {
+                ls7VolumeDB.value = (ls7VolumeDB.value + 10).coerceIn(0, 100)
+            } else if (gesture == GestureType.THUMBS_DOWN) {
+                ls7VolumeDB.value = (ls7VolumeDB.value - 10).coerceIn(0, 100)
+            }
+        }
+
+        // Chef Master gesture trigger
+        if (_selectedLifeApp.value == LifeAppType.CHEF_MASTER) {
+            if (gesture == GestureType.INDEX_POINT) {
+                quickFlickPancake()
+            } else if (gesture == GestureType.PINCH || gesture == GestureType.FIST) {
+                chopVegetables()
             }
         }
     }

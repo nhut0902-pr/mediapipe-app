@@ -213,7 +213,7 @@ fun TrackPadView(
             color = Color(0xFF8B9FB4)
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .height(160.dp)
                 .fillMaxWidth()
@@ -224,7 +224,7 @@ fun TrackPadView(
                     )
                 )
                 .border(1.5.dp, Color(0xFF00FA9A).copy(alpha = 0.3f), RoundedCornerShape(14.dp))
-                .pointerInput(Unit) {
+                .pointerInput(px, py) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
                         val currentX = px + dragAmount.x / size.width
@@ -234,15 +234,18 @@ fun TrackPadView(
                 }
                 .testTag("trackpad_area")
         ) {
-            // Draw crosshair or marker
+            val containerWidth = maxWidth
+            val containerHeight = maxHeight
+
+            // Draw crosshair or marker mapped to actual device container dimensions minus the marker size
             Box(
                 modifier = Modifier
-                    .size(24.dp)
                     .align(Alignment.TopStart)
                     .offset(
-                        x = (px * 100).dp.coerceAtLeast(0.dp),
-                        y = (py * 100).dp.coerceAtLeast(0.dp)
+                        x = (px * (containerWidth.value - 24)).dp.coerceAtLeast(0.dp),
+                        y = (py * (containerHeight.value - 24)).dp.coerceAtLeast(0.dp)
                     )
+                    .size(24.dp)
                     .background(Color(0xFF00FA9A).copy(alpha = 0.35f), RoundedCornerShape(50))
                     .border(2.dp, Color(0xFF00FA9A), RoundedCornerShape(50)),
                 contentAlignment = Alignment.Center
