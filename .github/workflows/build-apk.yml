@@ -34,12 +34,18 @@ jobs:
 
       - name: Build Debug APK
         run: |
+          # Tạo tệp .env chứa khóa giả lập để xây dựng ứng dụng thành công
+          echo "GEMINI_API_KEY=AIzaSyFakeKey_Placeholder" > .env
+          echo "Đã khởi tạo thành công tệp .env tạm thời."
+
           # Tìm kiếm tệp cấu hình Gradle một cách an toàn, tránh lỗi xargs khi không tìm thấy
           GRADLE_FILE=$(find . -type f \( -name "settings.gradle.kts" -o -name "settings.gradle" -o -name "build.gradle.kts" -o -name "build.gradle" \) | head -n 1)
           if [ -n "$GRADLE_FILE" ]; then
             GRADLE_ROOT=$(dirname "$GRADLE_FILE")
             echo "Tìm thấy dự án Gradle tại thư mục: $GRADLE_ROOT"
             cd "$GRADLE_ROOT"
+            # Đảm bảo .env nằm đúng thư mục gốc Gradle
+            echo "GEMINI_API_KEY=AIzaSyFakeKey_Placeholder" > .env
             gradle :app:assembleDebug --no-daemon
             cd -
             mkdir -p build-output

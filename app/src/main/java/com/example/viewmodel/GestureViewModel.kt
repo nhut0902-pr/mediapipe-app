@@ -878,9 +878,9 @@ class GestureViewModel : ViewModel() {
 
         // Chef Master gesture trigger
         if (_selectedLifeApp.value == LifeAppType.CHEF_MASTER) {
-            if (gesture == GestureType.INDEX_POINT) {
+            if (gesture == GestureType.INDEX_POINT || gesture == GestureType.GUN || gesture == GestureType.THUMBS_UP) {
                 quickFlickPancake()
-            } else if (gesture == GestureType.PINCH || gesture == GestureType.FIST) {
+            } else if (gesture == GestureType.PALM || gesture == GestureType.PINCH || gesture == GestureType.FIST) {
                 chopVegetables()
             }
         }
@@ -1435,8 +1435,8 @@ class GestureViewModel : ViewModel() {
 
         // Conductor Speed ticking
         if (_selectedLifeApp.value == LifeAppType.MUSIC_CONDUCTOR) {
-            // Volume modulated with vertical pointer slider height
-            ls7VolumeDB.value = (100 - (_pointerY.value * 100).toInt()).coerceIn(0, 100)
+            // Volume modulated with thumbs up/down gestures.
+            // The ticking loop can animate the conductor baton movement.
         }
 
         // Live App 10: Chef pancakes gravity
