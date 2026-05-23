@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">GestureQuest Arena</string>
+    <string name="app_name">AppLock</string>
+    <string name="accessibility_service_description">Dịch vụ giám sát thông minh hỗ trợ khóa ứng dụng riêng tư của hệ thống AppLock sinh trắc học.</string>
 </resources>

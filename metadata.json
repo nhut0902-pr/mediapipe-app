@@ -1,6 +1,6 @@
 {
-  "name": "GestureQuest Arena",
-  "description": "Chinh phục 10+ game và 10+ ứng dụng cuộc sống bằng cử chỉ tay tương tác thực tế ảo với bộ giả lập MediaPipe Hand tuyệt đỉnh.",
+  "name": "AppLock",
+  "description": "Ứng dụng khóa app riêng tư bảo mật bằng sinh trắc học và mã số (PIN), kiểm soát và bảo vệ dữ liệu cá nhân tối ưu.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
