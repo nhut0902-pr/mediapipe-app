@@ -23,7 +23,7 @@
         android:theme="@style/Theme.MyApplication">
         
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.MainActivity"
             android:enabled="true"
             android:exported="true"
             android:label="@string/app_name"
@@ -35,12 +35,12 @@
         </activity>
 
         <activity-alias
-            android:name=".MainActivityAliasCalculator"
+            android:name="com.example.MainActivityAliasCalculator"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_disguise_calculator_launcher"
             android:label="Máy tính"
-            android:targetActivity=".MainActivity">
+            android:targetActivity="com.example.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -48,12 +48,12 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".MainActivityAliasWeather"
+            android:name="com.example.MainActivityAliasWeather"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_disguise_weather_launcher"
             android:label="Thời tiết"
-            android:targetActivity=".MainActivity">
+            android:targetActivity="com.example.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -61,12 +61,12 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".MainActivityAliasCalendar"
+            android:name="com.example.MainActivityAliasCalendar"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_disguise_calendar_launcher"
             android:label="Lịch"
-            android:targetActivity=".MainActivity">
+            android:targetActivity="com.example.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

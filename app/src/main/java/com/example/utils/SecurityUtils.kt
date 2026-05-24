@@ -173,10 +173,10 @@ object SecurityUtils {
         val packageName = context.packageName
 
         val components = mapOf(
-            "DEFAULT" to android.content.ComponentName(packageName, "$packageName.MainActivity"),
-            "CALCULATOR" to android.content.ComponentName(packageName, "$packageName.MainActivityAliasCalculator"),
-            "WEATHER" to android.content.ComponentName(packageName, "$packageName.MainActivityAliasWeather"),
-            "CALENDAR" to android.content.ComponentName(packageName, "$packageName.MainActivityAliasCalendar")
+            "DEFAULT" to android.content.ComponentName(packageName, "com.example.MainActivity"),
+            "CALCULATOR" to android.content.ComponentName(packageName, "com.example.MainActivityAliasCalculator"),
+            "WEATHER" to android.content.ComponentName(packageName, "com.example.MainActivityAliasWeather"),
+            "CALENDAR" to android.content.ComponentName(packageName, "com.example.MainActivityAliasCalendar")
         )
 
         components.forEach { (key, component) ->
@@ -191,5 +191,53 @@ object SecurityUtils {
                 e.printStackTrace()
             }
         }
+    }
+
+    fun isIntruderEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean("intruder_detection_enabled", true)
+    }
+
+    fun setIntruderEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("intruder_detection_enabled", enabled).apply()
+    }
+
+    fun isRandomKeypadEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean("random_keypad_enabled", false)
+    }
+
+    fun setRandomKeypadEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("random_keypad_enabled", enabled).apply()
+    }
+
+    fun isFakeCrashEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean("fake_crash_enabled", false)
+    }
+
+    fun setFakeCrashEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("fake_crash_enabled", enabled).apply()
+    }
+
+    fun getSecurityQuestion(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString("security_question", "Tên trường tiểu học của bạn là gì?") ?: "Tên trường tiểu học của bạn là gì?"
+    }
+
+    fun getSecurityAnswer(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString("security_answer", "") ?: ""
+    }
+
+    fun setSecurityQuestionAndAnswer(context: Context, question: String, answer: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString("security_question", question)
+            .putString("security_answer", answer.trim().lowercase())
+            .apply()
     }
 }

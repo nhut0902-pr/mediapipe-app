@@ -38,12 +38,34 @@ import com.example.utils.BiometricHelper
 import com.example.utils.SecurityUtils
 import java.util.concurrent.Executor
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.launch
+import androidx.lifecycle.coroutineScope
 
 class LockActivity : FragmentActivity() {
 
     private var lockedPackage: String = ""
     private var appLabel: String = ""
     private var appIcon: Drawable? = null
+
+    fun logSecurityEvent(logType: String, attemptedPin: String = "") {
+        if (SecurityUtils.isIntruderEnabled(this)) {
+            lifecycle.coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val db = com.example.database.AppDatabase.getInstance(applicationContext)
+                    db.securityLogDao.insertLog(
+                        com.example.model.SecurityLog(
+                            packageName = lockedPackage,
+                            appName = appLabel,
+                            logType = logType,
+                            attemptedPin = attemptedPin
+                        )
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,29 +117,30 @@ class LockActivity : FragmentActivity() {
             }
         }
 
-        // Auto trigger biometric scan if enabled and available
-        if (SecurityUtils.isBiometricEnabled(this) && BiometricHelper.isBiometricAvailable(this)) {
+        // Auto trigger biometric scan if enabled, available, and fake crash is NOT active
+        if (!SecurityUtils.isFakeCrashEnabled(this) && SecurityUtils.isBiometricEnabled(this) && BiometricHelper.isBiometricAvailable(this)) {
             triggerBiometricPrompt()
         }
     }
 
-    private fun triggerBiometricPrompt() {
+    fun triggerBiometricPrompt() {
         val executor: Executor = ContextCompat.getMainExecutor(this)
         val biometricPrompt = BiometricPrompt(this, executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)
+                    logSecurityEvent("SUCCESS", "Sinh trắc học")
                     AppLockManager.unlockedInSession.add(lockedPackage)
                     finish()
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
-                    // If user canceled or clicked PIN fallback, just display the fallback keypad
                 }
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
+                    logSecurityEvent("FAILED", "Sinh trắc học (Sai vân tay)")
                     Toast.makeText(this@LockActivity, "Xác thực thất bại", Toast.LENGTH_SHORT).show()
                 }
             })
@@ -150,8 +173,160 @@ fun LockScreenContent(
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val db = remember { com.example.database.AppDatabase.getInstance(context.applicationContext) }
+    val repo = remember { com.example.data.AppLockRepository(db.lockedAppDao, db.securityLogDao) }
+
     var pinValue by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
+    var failedAttemptsCount by remember { mutableStateOf(0) }
+
+    var showFakeCrash by remember { mutableStateOf(SecurityUtils.isFakeCrashEnabled(context)) }
+    var showRecoveryDialog by remember { mutableStateOf(false) }
+    var recoveryAnswer by remember { mutableStateOf("") }
+    var recoveryError by remember { mutableStateOf("") }
+
+    LaunchedEffect(showFakeCrash) {
+        if (!showFakeCrash) {
+            // Auto trigger biometric scan if enabled and available
+            if (SecurityUtils.isBiometricEnabled(context) && BiometricHelper.isBiometricAvailable(context)) {
+                (context as? LockActivity)?.triggerBiometricPrompt()
+            }
+        }
+    }
+
+    if (showFakeCrash) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Text(
+                    text = "Lỗi hệ thống",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "Rất tiếc, ứng dụng $appName đã dừng đột ngột. Vui lòng thử lại sau.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onCancel()
+                    }
+                ) {
+                    Text("Đóng")
+                }
+            },
+            dismissButton = {
+                var clickCount by remember { mutableIntStateOf(0) }
+                TextButton(
+                    onClick = {
+                        clickCount++
+                        if (clickCount >= 3) {
+                            showFakeCrash = false
+                            Toast.makeText(context, "Đã bỏ qua màn hình ngụy trang lỗi!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Gửi báo cáo sự cố thành công (${clickCount}/3)", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text("Báo cáo", fontWeight = FontWeight.Bold)
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            properties = androidx.compose.ui.window.DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = false
+            )
+        )
+    }
+
+    if (showRecoveryDialog) {
+        val question = remember { SecurityUtils.getSecurityQuestion(context) }
+        val savedAnswer = remember { SecurityUtils.getSecurityAnswer(context) }
+        
+        AlertDialog(
+            onDismissRequest = { showRecoveryDialog = false },
+            title = {
+                Text(
+                    text = "Khôi phục mật mã",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Câu hỏi bảo mật của bạn:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = question,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    OutlinedTextField(
+                        value = recoveryAnswer,
+                        onValueChange = {
+                            recoveryAnswer = it
+                            recoveryError = ""
+                        },
+                        placeholder = { Text("Nhập câu trả lời...") },
+                        singleLine = true,
+                        isError = recoveryError.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    if (recoveryError.isNotEmpty()) {
+                        Text(
+                            text = recoveryError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (savedAnswer.isEmpty()) {
+                            recoveryError = "Bạn chưa thiết lập câu hỏi bảo mật trong Cài đặt!"
+                        } else if (recoveryAnswer.trim().lowercase() == savedAnswer) {
+                            showRecoveryDialog = false
+                            Toast.makeText(context, "Xác thực thành công. Đang mở khóa!", Toast.LENGTH_SHORT).show()
+                            coroutineScope.launch {
+                                repo.insertSecurityLog(packageName, appName, "SUCCESS_RECOVERY")
+                            }
+                            onUnlockSuccess()
+                        } else {
+                            recoveryError = "Câu trả lời nhập vào không chính xác!"
+                        }
+                    }
+                ) {
+                    Text("Xác nhận")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRecoveryDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
+    val isRandomKeypad = remember { SecurityUtils.isRandomKeypadEnabled(context) }
+    val scrambledKeys = remember {
+        val list = (0..9).map { it.toString() }.toMutableList()
+        if (isRandomKeypad) {
+            list.shuffle()
+        }
+        list
+    }
 
     val handlePinInput: (String) -> Unit = { digit ->
         if (pinValue.length < 4) {
@@ -160,10 +335,18 @@ fun LockScreenContent(
             if (pinValue.length == 4) {
                 // Verify Pin entered securely
                 if (SecurityUtils.verifyPasscode(context, pinValue)) {
+                    coroutineScope.launch {
+                        repo.insertSecurityLog(packageName, appName, "SUCCESS")
+                    }
                     onUnlockSuccess()
                 } else {
+                    failedAttemptsCount++
+                    val attempted = pinValue
                     errorMessage = "Mã PIN không đúng, vui lòng thử lại!"
                     pinValue = ""
+                    coroutineScope.launch {
+                        repo.insertSecurityLog(packageName, appName, "FAILED", attempted)
+                    }
                 }
             }
         }
@@ -230,6 +413,24 @@ fun LockScreenContent(
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
+
+            if (SecurityUtils.isIntruderEnabled(context) && failedAttemptsCount >= 3) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "CẢNH BÁO ĐỘT NHẬP: Phát hiện $failedAttemptsCount lần nhập mã PIN sai liên tục!",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
         }
 
         // Numeric Indicator Dots
@@ -276,11 +477,19 @@ fun LockScreenContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val keys = listOf(
-                listOf("1", "2", "3"),
-                listOf("4", "5", "6"),
-                listOf("7", "8", "9")
-            )
+            val keys = if (isRandomKeypad) {
+                listOf(
+                    scrambledKeys.subList(0, 3),
+                    scrambledKeys.subList(3, 6),
+                    scrambledKeys.subList(6, 9)
+                )
+            } else {
+                listOf(
+                    listOf("1", "2", "3"),
+                    listOf("4", "5", "6"),
+                    listOf("7", "8", "9")
+                )
+            }
 
             for (row in keys) {
                 Row(
@@ -304,14 +513,15 @@ fun LockScreenContent(
                         .size(68.dp)
                         .clip(CircleShape)
                         .clickable(enabled = BiometricHelper.isBiometricAvailable(context)) {
-                            // Since we have triggerBiometricPrompt inside LockActivity, we let users tap this button
-                            // to launch biometric popup scanner.
                             (context as? LockActivity)?.let {
                                 val executor = ContextCompat.getMainExecutor(it)
                                 val prompt = BiometricPrompt(it, executor,
                                     object : BiometricPrompt.AuthenticationCallback() {
                                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                                             super.onAuthenticationSucceeded(result)
+                                            coroutineScope.launch {
+                                                repo.insertSecurityLog(packageName, appName, "SUCCESS")
+                                            }
                                             onUnlockSuccess()
                                         }
                                         override fun onAuthenticationFailed() {
@@ -338,7 +548,8 @@ fun LockScreenContent(
                     }
                 }
 
-                KeypadButton(text = "0", onClick = { handlePinInput("0") })
+                val lastKey = if (isRandomKeypad) scrambledKeys[9] else "0"
+                KeypadButton(text = lastKey, onClick = { handlePinInput(lastKey) })
 
                 // Backspace button to delete typed elements
                 Box(
@@ -363,14 +574,29 @@ fun LockScreenContent(
             }
         }
 
-        // Bottom escape button cancels and returns the smartphone to Home Screen
-        TextButton(onClick = onCancel) {
-            Text(
-                text = "Thoát ra màn hình chính",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold
-            )
+        // Recovery & Cancel Actions Row
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = { showRecoveryDialog = true }) {
+                Text(
+                    text = "Quên mật khẩu?",
+                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            
+            TextButton(onClick = onCancel) {
+                Text(
+                    text = "Thoát",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

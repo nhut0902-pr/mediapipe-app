@@ -119,6 +119,31 @@ fun AppListScreen(
                     .padding(bottom = 12.dp)
             )
 
+            // Dynamic filter tabs
+            val currentFilter by viewModel.currentFilter.collectAsStateWithLifecycle()
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            ) {
+                FilterChip(
+                    selected = currentFilter == AppLockViewModel.AppFilter.ALL,
+                    onClick = { viewModel.setFilter(AppLockViewModel.AppFilter.ALL) },
+                    label = { Text("Tất cả ứng dụng") }
+                )
+                FilterChip(
+                    selected = currentFilter == AppLockViewModel.AppFilter.LOCKED,
+                    onClick = { viewModel.setFilter(AppLockViewModel.AppFilter.LOCKED) },
+                    label = { Text("Đã bảo vệ") }
+                )
+                FilterChip(
+                    selected = currentFilter == AppLockViewModel.AppFilter.UNLOCKED,
+                    onClick = { viewModel.setFilter(AppLockViewModel.AppFilter.UNLOCKED) },
+                    label = { Text("Chưa bảo vệ") }
+                )
+            }
+
             // Warning panel for permissions setup
             if (!isAccessibilityEnabled || !isOverlayEnabled) {
                 Card(

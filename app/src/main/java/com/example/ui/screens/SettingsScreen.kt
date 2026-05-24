@@ -31,6 +31,9 @@ import com.example.utils.BiometricHelper
 import com.example.utils.PermissionHelper
 import com.example.utils.SecurityUtils
 import com.example.viewmodel.AppLockViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +53,7 @@ fun SettingsScreen(
 
     val appIconDisguise by viewModel.appIconDisguise.collectAsStateWithLifecycle()
     var showDisguiseDialog by remember { mutableStateOf(false) }
+    var showIntruderLogDialog by remember { mutableStateOf(false) }
 
     var showStartTimerDialog by remember { mutableStateOf(false) }
     var showEndTimerDialog by remember { mutableStateOf(false) }
@@ -62,6 +66,18 @@ fun SettingsScreen(
     var tempNewPin by remember { mutableStateOf("") }
     var tempConfirmPin by remember { mutableStateOf("") }
     var pinDialogError by remember { mutableStateOf("") }
+
+    val isFakeCrashEnabled by viewModel.isFakeCrashEnabled.collectAsStateWithLifecycle()
+    val securityQuestion by viewModel.securityQuestion.collectAsStateWithLifecycle()
+    val securityAnswer by viewModel.securityAnswer.collectAsStateWithLifecycle()
+    val securityLogs by viewModel.securityLogs.collectAsStateWithLifecycle()
+
+    var showQuestionDialog by remember { mutableStateOf(false) }
+    var tempQuestion by remember { mutableStateOf("") }
+    var tempAnswer by remember { mutableStateOf("") }
+    var questionError by remember { mutableStateOf("") }
+
+    var showLogsDialog by remember { mutableStateOf(false) }
 
     // Read permissions state
     var isAccessibilityEnabled by remember {
@@ -199,18 +215,30 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                val disguiseText = when (appIconDisguise) {
-                    "CALCULATOR" -> "Máy tính"
-                    "WEATHER" -> "Thời tiết"
-                    "CALENDAR" -> "Lịch"
-                    else -> "Mặc định (AppLock)"
+                Column {
+                    val disguiseText = when (appIconDisguise) {
+                        "CALCULATOR" -> "Máy tính"
+                        "WEATHER" -> "Thời tiết"
+                        "CALENDAR" -> "Lịch"
+                        else -> "Mặc định (AppLock)"
+                    }
+                    SettingsClickableRow(
+                        title = "Ngụy trang Biểu tượng",
+                        subtitle = "Cách hiển thị ngoài launcher: $disguiseText",
+                        icon = Icons.Default.VisibilityOff,
+                        onClick = { showDisguiseDialog = true }
+                    )
+                    
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    
+                    SettingsToggleRow(
+                        title = "Khóa ngụy trang Lỗi giả",
+                        subtitle = "Hiện lỗi 'Ứng dụng đã dừng' giả khi mở app, nhấp 'Báo cáo' 3 lần để mở",
+                        icon = Icons.Default.Warning,
+                        checked = isFakeCrashEnabled,
+                        onCheckedChange = { viewModel.setFakeCrashEnabled(it) }
+                    )
                 }
-                SettingsClickableRow(
-                    title = "Ngụy trang Biểu tượng",
-                    subtitle = "Cách hiển thị ngoài launcher: $disguiseText",
-                    icon = Icons.Default.VisibilityOff,
-                    onClick = { showDisguiseDialog = true }
-                )
             }
 
             // Section 2: Tài khoản & Passcode
@@ -225,18 +253,46 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                SettingsClickableRow(
-                    title = "Thay đổi mã PIN",
-                    subtitle = "Cập nhật mã số khóa fallback truy cập",
-                    icon = Icons.Default.VpnKey,
-                    onClick = {
-                        tempNewPin = ""
-                        tempConfirmPin = ""
-                        pinDialogError = ""
-                        showChangePinDialog = true
-                    }
-                )
+                Column {
+                    SettingsClickableRow(
+                        title = "Thay đổi mã PIN",
+                        subtitle = "Cập nhật mã số khóa fallback truy cập",
+                        icon = Icons.Default.VpnKey,
+                        onClick = {
+                            tempNewPin = ""
+                            tempConfirmPin = ""
+                            pinDialogError = ""
+                            showChangePinDialog = true
+                        }
+                    )
+                    
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    
+                    SettingsClickableRow(
+                        title = "Nhật ký truy cập bảo mật",
+                        subtitle = "Xem lịch sử mở khóa và các lần đột nhập sai",
+                        icon = Icons.Default.History,
+                        onClick = {
+                            showLogsDialog = true
+                        }
+                    )
+                    
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    
+                    SettingsClickableRow(
+                        title = "Câu hỏi bảo mật khôi phục",
+                        subtitle = "Thiết lập câu hỏi cá nhân khôi phục mã PIN khi quên",
+                        icon = Icons.Default.QuestionAnswer,
+                        onClick = {
+                            tempQuestion = if (securityQuestion.isNotEmpty()) securityQuestion else "Bạn sinh ra ở thành phố nào?"
+                            tempAnswer = securityAnswer
+                            questionError = ""
+                            showQuestionDialog = true
+                        }
+                    )
+                }
             }
+
 
             // Section 3: Quyền hệ thống kiểm tra
             Text(
@@ -295,6 +351,52 @@ fun SettingsScreen(
                 }
             }
 
+            // Section 3.5: Tính năng nâng cao
+            Text(
+                "TÍNH NĂNG NÂNG CAO",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column {
+                    val isRandomKeypadEnabled by viewModel.isRandomKeypadEnabled.collectAsStateWithLifecycle()
+                    SettingsToggleRow(
+                        title = "Xáo trộn bàn phím PIN",
+                        subtitle = "Xáo trộn vị trí quay số mỗi lần mở khóa để chống nhìn lén",
+                        icon = Icons.Default.Shuffle,
+                        checked = isRandomKeypadEnabled,
+                        onCheckedChange = { viewModel.setRandomKeypadEnabled(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                    val isIntruderEnabled by viewModel.isIntruderEnabled.collectAsStateWithLifecycle()
+                    SettingsToggleRow(
+                        title = "Cảnh báo kẻ đột nhập",
+                        subtitle = "Hiển thị cảnh báo đột nhập trực quan khi nhập sai mã PIN quá 3 lần",
+                        icon = Icons.Default.Announcement,
+                        checked = isIntruderEnabled,
+                        onCheckedChange = { viewModel.setIntruderEnabled(it) }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                    val securityLogs by viewModel.securityLogs.collectAsStateWithLifecycle()
+                    val failedAttemptsLogs = remember(securityLogs) { securityLogs.filter { it.logType == "FAILED" } }
+                    SettingsClickableRow(
+                        title = "Nhật ký đột nhập",
+                        subtitle = "Hiện có ${failedAttemptsLogs.size} lần nhập sai mã khóa",
+                        icon = Icons.Default.Warning,
+                        onClick = { showIntruderLogDialog = true }
+                    )
+                }
+            }
+
             // Section 4: Chế độ giao diện & Tối ưu hóa đa nhiệm
             Text(
                 "THÔNG TIN PHIÊN BẢN",
@@ -315,7 +417,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Phiên bản: 1.5.4",
+                            "Phiên bản: 1.5.5",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -348,12 +450,12 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        UpdateBulletItem("Ngụy trang biểu tượng ứng dụng", "Thay đổi tên và biểu tượng hiển thị ngoài màn hình chính để đánh lạc hướng (Máy tính, Thời tiết, Lịch bản đồ...)")
-                        UpdateBulletItem("Hẹn giờ khóa ứng dụng", "Thiết lập khung giờ đóng/mở bảo vệ tự động (Bật/tắt trong Cài đặt phía trên).")
-                        UpdateBulletItem("Tích hợp Widget màn hình chính", "Tiện ích ngoài màn hình chính hiển thị trạng thái và mở khóa nhanh.")
-                        UpdateBulletItem("Nhật ký truy cập bảo mật", "Ghi lại chi tiết lịch sử đóng/mở ứng dụng để kiểm soát an toàn.")
-                        UpdateBulletItem("Tối ưu hóa đa nhiệm v2", "Cơ chế chống Bypass chặn đứng xâm nhập qua cử chỉ chuyển trang vuốt.")
-                        UpdateBulletItem("Vá lỗi & Tăng độ tin cậy", "Sửa đổi phản hồi vân tay & gia tăng tính mượt mà của màn che.")
+                        UpdateBulletItem("Bộ lọc Phân loại Ứng dụng (v1.5.5)", "Thêm dải Tabs bộ lọc nhanh trạng thái Đã khóa / Chưa khóa trực quan.")
+                        UpdateBulletItem("Xáo trộn Bàn phím PIN (v1.5.5)", "Nháo vị trí các phím số ngẫu nhiên ngăn rò rỉ mã số khi gõ khóa.")
+                        UpdateBulletItem("Cảnh báo Đột nhập (v1.5.5)", "Báo cáo màu đỏ trực quan khi nhập sai PIN > 3 lần kèm ghi nhớ nhật ký.")
+                        UpdateBulletItem("Ngụy trang Biểu tượng ứng dụng", "Thay đổi tên và biểu tượng hiển thị ngoài màn hình chính tránh bị dòm ngó.")
+                        UpdateBulletItem("Hẹn giờ khóa ứng dụng", "Thiết lập khung giờ khóa/mở bảo vệ tự động linh hoạt.")
+                        UpdateBulletItem("Vá lỗi & Tăng độ tin cậy", "Khắc phục cơ chế đổi icon hoạt động ổn định trên mọi hệ điều hành.")
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
@@ -428,6 +530,256 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showChangePinDialog = false }) {
                     Text("Hủy bỏ")
+                }
+            }
+        )
+    }
+
+    // Configure Security Question Dialog
+    if (showQuestionDialog) {
+        val questionsList = listOf(
+            "Bạn sinh ra ở thành phố nào?",
+            "Tên con vật cưng đầu tiên của bạn là gì?",
+            "Món ăn yêu thích nhất của bạn là gì?",
+            "Tên trường học tiểu học của bạn là gì?",
+            "Màu sắc may mắn yêu thích của bạn là gì?"
+        )
+        var expandedQuestionDropdown by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { showQuestionDialog = false },
+            title = { Text("Thiết lập Câu hỏi bảo mật", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Dùng câu hỏi bảo mật để lấy lại mã PIN trong trường hợp bạn quên.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Spinner-like selector for Question
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { expandedQuestionDropdown = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = tempQuestion,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Chọn câu hỏi",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = expandedQuestionDropdown,
+                            onDismissRequest = { expandedQuestionDropdown = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            questionsList.forEach { q ->
+                                DropdownMenuItem(
+                                    text = { Text(q) },
+                                    onClick = {
+                                        tempQuestion = q
+                                        expandedQuestionDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = tempAnswer,
+                        onValueChange = {
+                            tempAnswer = it
+                            questionError = ""
+                        },
+                        label = { Text("Câu trả lời bảo mật") },
+                        placeholder = { Text("Nhập câu trả lời...") },
+                        singleLine = true,
+                        isError = questionError.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (questionError.isNotEmpty()) {
+                        Text(
+                            text = questionError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (tempAnswer.trim().isEmpty()) {
+                            questionError = "Câu trả lời không được để trống!"
+                        } else {
+                            viewModel.setSecurityQuestionAndAnswer(tempQuestion, tempAnswer)
+                            Toast.makeText(context, "Lưu câu hỏi bảo mật thành công!", Toast.LENGTH_SHORT).show()
+                            showQuestionDialog = false
+                        }
+                    }
+                ) {
+                    Text("Lưu cấu hình")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showQuestionDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
+    // Security Access Logs Viewer Dialog
+    if (showLogsDialog) {
+        val coroutineScope = rememberCoroutineScope()
+        AlertDialog(
+            onDismissRequest = { showLogsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Nhật ký bảo mật", fontWeight = FontWeight.Bold)
+                    if (securityLogs.isNotEmpty()) {
+                        TextButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    val dbInstance = com.example.database.AppDatabase.getInstance(context.applicationContext)
+                                    withContext(Dispatchers.IO) {
+                                        dbInstance.securityLogDao.clearAllLogs()
+                                    }
+                                    Toast.makeText(context, "Đã xóa toàn bộ nhật ký!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        ) {
+                            Text("Xóa hết", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+            },
+            text = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                ) {
+                    if (securityLogs.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.HistoryToggleOff,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Chưa có bất kỳ nhật ký bảo mật nào.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    } else {
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(securityLogs.size) { index ->
+                                val log = securityLogs[index]
+                                val isSuccess = log.logType.startsWith("SUCCESS")
+                                val statusText = when {
+                                    log.logType == "SUCCESS_RECOVERY" -> "Khôi phục qua câu hỏi thành công"
+                                    isSuccess -> "Mở khóa thành công"
+                                    log.logType.contains("Sai vân tay") -> "Sai vân tay đột nhập"
+                                    else -> "Mở khóa lỗi PIN"
+                                }
+                                val statusColor = if (isSuccess) {
+                                    Color(0xFF2E7D32)
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                }
+                                
+                                val formattedTime = remember(log.timestamp) {
+                                    val sdf = java.text.SimpleDateFormat("dd/MM HH:mm:ss", java.util.Locale.getDefault())
+                                    sdf.format(java.util.Date(log.timestamp))
+                                }
+
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                                                    contentDescription = null,
+                                                    tint = statusColor,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = log.appName,
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = statusText,
+                                                color = statusColor,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            if (!isSuccess && !log.attemptedPin.isNullOrBlank()) {
+                                                Text(
+                                                    text = "PIN đã nhập: ${log.attemptedPin}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = formattedTime,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLogsDialog = false }) {
+                    Text("Đóng")
                 }
             }
         )
@@ -680,6 +1032,118 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showDisguiseDialog = false }) {
                     Text("Đóng")
+                }
+            }
+        )
+    }
+
+    if (showIntruderLogDialog) {
+        val securityLogs by viewModel.securityLogs.collectAsStateWithLifecycle()
+        val failedLogs = remember(securityLogs) { securityLogs.filter { it.logType == "FAILED" } }
+
+        AlertDialog(
+            onDismissRequest = { showIntruderLogDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Lịch sử Đột nhập", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                if (failedLogs.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "Chưa phát hiện xâm nhập nào!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        failedLogs.reversed().forEach { log ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = log.appName,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                        
+                                        val date = java.util.Date(log.timestamp)
+                                        val format = java.text.SimpleDateFormat("dd/MM HH:mm:ss", java.util.Locale.getDefault())
+                                        Text(
+                                            text = format.format(date),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Mã số đã gõ: [${log.attemptedPin}]",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showIntruderLogDialog = false }
+                ) {
+                    Text("Đóng")
+                }
+            },
+            dismissButton = {
+                if (failedLogs.isNotEmpty()) {
+                    TextButton(
+                        onClick = {
+                            viewModel.clearAllSecurityLogs()
+                            showIntruderLogDialog = false
+                            Toast.makeText(context, "Đã xóa sạch nhật ký đột nhập!", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Text("Xóa nhật ký", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         )

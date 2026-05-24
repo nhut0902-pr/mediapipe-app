@@ -81,22 +81,73 @@ class AppLockViewModel(application: Application) : AndroidViewModel(application)
         _scheduleEndMinute.value = minute
     }
 
+    enum class AppFilter { ALL, LOCKED, UNLOCKED }
+
+    private val _currentFilter = MutableStateFlow(AppFilter.ALL)
+    val currentFilter: StateFlow<AppFilter> = _currentFilter.asStateFlow()
+
+    fun setFilter(filter: AppFilter) {
+        _currentFilter.value = filter
+    }
+
+    private val _isIntruderEnabled = MutableStateFlow(SecurityUtils.isIntruderEnabled(application))
+    val isIntruderEnabled: StateFlow<Boolean> = _isIntruderEnabled.asStateFlow()
+
+    fun setIntruderEnabled(enabled: Boolean) {
+        SecurityUtils.setIntruderEnabled(getApplication(), enabled)
+        _isIntruderEnabled.value = enabled
+    }
+
+    private val _isRandomKeypadEnabled = MutableStateFlow(SecurityUtils.isRandomKeypadEnabled(application))
+    val isRandomKeypadEnabled: StateFlow<Boolean> = _isRandomKeypadEnabled.asStateFlow()
+
+    fun setRandomKeypadEnabled(enabled: Boolean) {
+        SecurityUtils.setRandomKeypadEnabled(getApplication(), enabled)
+        _isRandomKeypadEnabled.value = enabled
+    }
+
+    private val _isFakeCrashEnabled = MutableStateFlow(SecurityUtils.isFakeCrashEnabled(application))
+    val isFakeCrashEnabled: StateFlow<Boolean> = _isFakeCrashEnabled.asStateFlow()
+
+    fun setFakeCrashEnabled(enabled: Boolean) {
+        SecurityUtils.setFakeCrashEnabled(getApplication(), enabled)
+        _isFakeCrashEnabled.value = enabled
+    }
+
+    private val _securityQuestion = MutableStateFlow(SecurityUtils.getSecurityQuestion(application))
+    val securityQuestion: StateFlow<String> = _securityQuestion.asStateFlow()
+
+    private val _securityAnswer = MutableStateFlow(SecurityUtils.getSecurityAnswer(application))
+    val securityAnswer: StateFlow<String> = _securityAnswer.asStateFlow()
+
+    fun setSecurityQuestionAndAnswer(question: String, answer: String) {
+        SecurityUtils.setSecurityQuestionAndAnswer(getApplication(), question, answer)
+        _securityQuestion.value = question
+        _securityAnswer.value = answer.trim().lowercase()
+    }
+
     // Expose security logs as a state flow auto-updated
     val securityLogs: StateFlow<List<com.example.model.SecurityLog>> = repository.allSecurityLogs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Combined state for filtered apps list
+    // Combined state for filtered apps list based on search and selected filter tab
     val filteredApps: StateFlow<List<AppInfo>> = combine(
         _installedApps,
-        _searchQuery
-    ) { apps, query ->
-        if (query.isBlank()) {
+        _searchQuery,
+        _currentFilter
+    ) { apps, query, filter ->
+        val searched = if (query.isBlank()) {
             apps
         } else {
             apps.filter {
                 it.appName.contains(query, ignoreCase = true) ||
                         it.packageName.contains(query, ignoreCase = true)
             }
+        }
+        when (filter) {
+            AppFilter.ALL -> searched
+            AppFilter.LOCKED -> searched.filter { it.isLocked }
+            AppFilter.UNLOCKED -> searched.filter { !it.isLocked }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
