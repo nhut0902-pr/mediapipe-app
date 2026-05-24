@@ -68,55 +68,60 @@ fun AppListScreen(
     }
 
     var selectedTab by remember { mutableIntStateOf(0) }
+    var activeUtilId by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
-            LargeTopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = if (selectedTab == 0) "Danh sách bảo vệ" else "Tiện ích đa năng",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-                        Text(
-                            text = if (selectedTab == 0) "Đã kích hoạt khóa cho $lockedCount ứng dụng" else "Lịch & Máy tính tích hợp tiện lợi",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Cấu hình",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.largeTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+            if (selectedTab == 0 || activeUtilId == null) {
+                LargeTopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = if (selectedTab == 0) "Danh sách bảo vệ" else "Tiện ích đa năng",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                            Text(
+                                text = if (selectedTab == 0) "Đã kích hoạt khóa cho $lockedCount ứng dụng" else "Lịch & Máy tính tích hợp tiện lợi",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onNavigateToSettings) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Cấu hình",
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.largeTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
                 )
-            )
+            }
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-            ) {
-                NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Default.Lock, contentDescription = "Bảo vệ") },
-                    label = { Text("Bảo vệ") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Widgets, contentDescription = "Tiện ích") },
-                    label = { Text("Tiện ích") }
-                )
+            if (selectedTab == 0 || activeUtilId == null) {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                ) {
+                    NavigationBarItem(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        icon = { Icon(Icons.Default.Lock, contentDescription = "Bảo vệ") },
+                        label = { Text("Bảo vệ") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        icon = { Icon(Icons.Default.Widgets, contentDescription = "Tiện ích") },
+                        label = { Text("Tiện ích") }
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -330,6 +335,8 @@ fun AppListScreen(
         } else {
             UtilitiesScreen(
                 viewModel = viewModel,
+                activeUtilId = activeUtilId,
+                onActiveUtilIdChange = { activeUtilId = it },
                 modifier = Modifier.padding(innerPadding)
             )
         }
