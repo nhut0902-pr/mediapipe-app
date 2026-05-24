@@ -14,6 +14,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -65,18 +67,20 @@ fun AppListScreen(
         isOverlayEnabled = PermissionHelper.isOverlayPermissionGranted(context)
     }
 
+    var selectedTab by remember { mutableIntStateOf(0) }
+
     Scaffold(
         topBar = {
             LargeTopAppBar(
                 title = {
                     Column {
                         Text(
-                            "Danh sách bảo vệ",
+                            text = if (selectedTab == 0) "Danh sách bảo vệ" else "Tiện ích đa năng",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.headlineMedium
                         )
                         Text(
-                            "Đã kích hoạt khóa cho $lockedCount ứng dụng",
+                            text = if (selectedTab == 0) "Đã kích hoạt khóa cho $lockedCount ứng dụng" else "Lịch & Máy tính tích hợp tiện lợi",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -96,213 +100,238 @@ fun AppListScreen(
                     titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
+        },
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            ) {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.Lock, contentDescription = "Bảo vệ") },
+                    label = { Text("Bảo vệ") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.Widgets, contentDescription = "Tiện ích") },
+                    label = { Text("Tiện ích") }
+                )
+            }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-        ) {
-            // Search Input Field
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.updateSearchQuery(it) },
-                placeholder = { Text("Tìm kiếm ứng dụng...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Tìm") },
-                singleLine = true,
-                shape = RoundedCornerShape(24.dp),
-                colors = textFieldColorsFallback(),
+        if (selectedTab == 0) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-            )
-
-            // Dynamic filter tabs
-            val currentFilter by viewModel.currentFilter.collectAsStateWithLifecycle()
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp)
             ) {
-                FilterChip(
-                    selected = currentFilter == AppLockViewModel.AppFilter.ALL,
-                    onClick = { viewModel.setFilter(AppLockViewModel.AppFilter.ALL) },
-                    label = { Text("Tất cả ứng dụng") }
-                )
-                FilterChip(
-                    selected = currentFilter == AppLockViewModel.AppFilter.LOCKED,
-                    onClick = { viewModel.setFilter(AppLockViewModel.AppFilter.LOCKED) },
-                    label = { Text("Đã bảo vệ") }
-                )
-                FilterChip(
-                    selected = currentFilter == AppLockViewModel.AppFilter.UNLOCKED,
-                    onClick = { viewModel.setFilter(AppLockViewModel.AppFilter.UNLOCKED) },
-                    label = { Text("Chưa bảo vệ") }
-                )
-            }
-
-            // Warning panel for permissions setup
-            if (!isAccessibilityEnabled || !isOverlayEnabled) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                // Search Input Field
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
+                    placeholder = { Text("Tìm kiếm ứng dụng...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Tìm") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = textFieldColorsFallback(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Cảnh báo",
-                                tint = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Yêu cầu cấp quyền hoạt động",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(6.dp))
-                        
-                        Text(
-                            "AppLock cần quyền Hỗ trợ tiếp cận (Accessibility) & Vẽ đè màn hình (Overlay) để khóa ứng dụng bảo mật.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f)
-                        )
+                        .padding(bottom = 12.dp)
+                )
 
-                        // Guide for Android 13+ Restricted Settings
-                        if (!isAccessibilityEnabled && Build.VERSION.SDK_INT >= 33) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            HorizontalDivider(color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f))
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                "LƯU Ý QUAN TRỌNG CHO ANDROID 13/14/15/16:",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                "Nếu hệ thống báo 'Ứng dụng đã bị từ chối cấp quyền' (Restricted Settings), hãy bỏ chặn theo 3 bước sau:",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f),
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
+                // Dynamic filter tabs
+                val currentFilter by viewModel.currentFilter.collectAsStateWithLifecycle()
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                ) {
+                    FilterChip(
+                        selected = currentFilter == AppLockViewModel.AppFilter.ALL,
+                        onClick = { viewModel.setFilter(AppLockViewModel.AppFilter.ALL) },
+                        label = { Text("Tất cả ứng dụng") }
+                    )
+                    FilterChip(
+                        selected = currentFilter == AppLockViewModel.AppFilter.LOCKED,
+                        onClick = { viewModel.setFilter(AppLockViewModel.AppFilter.LOCKED) },
+                        label = { Text("Đã bảo vệ") }
+                    )
+                    FilterChip(
+                        selected = currentFilter == AppLockViewModel.AppFilter.UNLOCKED,
+                        onClick = { viewModel.setFilter(AppLockViewModel.AppFilter.UNLOCKED) },
+                        label = { Text("Chưa bảo vệ") }
+                    )
+                }
+
+                // Warning panel for permissions setup
+                if (!isAccessibilityEnabled || !isOverlayEnabled) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = "Cảnh báo",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Yêu cầu cấp quyền hoạt động",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
+                            
                             Spacer(modifier = Modifier.height(6.dp))
                             
-                            val steps = listOf(
-                                "Bước 1: Mở Cài đặt hệ thống -> Ứng dụng -> Chọn AppLock.",
-                                "Bước 2: Nhấn nút ⋮ (3 chấm) ở góc trên bên phải màn hình thông tin ứng dụng AppLock.",
-                                "Bước 3: Chọn 'Cho phép cài đặt bị hạn chế' (Allow restricted settings), xác nhận mật khẩu điện thoại.",
-                                "Bước 4: Trở lại đây, nhấn nút bên dưới để bật Hỗ trợ tiếp cận AppLock thành công!"
+                            Text(
+                                "AppLock cần quyền Hỗ trợ tiếp cận (Accessibility) & Vẽ đè màn hình (Overlay) để khóa ứng dụng bảo mật.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f)
                             )
-                            
-                            steps.forEach { step ->
-                                Row(
-                                    modifier = Modifier.padding(vertical = 3.dp),
-                                    verticalAlignment = Alignment.Top
-                                ) {
-                                    Text(
-                                        "• ",
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onErrorContainer,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    Text(
-                                        text = step,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
-                                    )
-                                }
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(14.dp))
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            if (!isOverlayEnabled) {
-                                Button(
-                                    onClick = {
-                                        val intent = Intent(
-                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                            Uri.parse("package:${context.packageName}")
-                                        )
-                                        context.startActivity(intent)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.onErrorContainer,
-                                        contentColor = MaterialTheme.colorScheme.errorContainer
-                                    ),
-                                    modifier = Modifier.padding(end = 8.dp)
-                                ) {
-                                    Text("Cấp quyền Vẽ đè")
-                                }
-                            }
-                            if (!isAccessibilityEnabled) {
-                                Button(
-                                    onClick = {
-                                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                        context.startActivity(intent)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.onErrorContainer,
-                                        contentColor = MaterialTheme.colorScheme.errorContainer
-                                    )
-                                ) {
-                                    Text("Bật Hỗ trợ tiếp cận")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
 
-            // Central Items list container
-            if (isLoadingApps) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-            } else if (filteredApps.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.LockOpen,
-                            contentDescription = "Trống",
-                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            "Không tìm thấy ứng dụng nào",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
-                        )
+                            // Guide for Android 13+ Restricted Settings
+                            if (!isAccessibilityEnabled && Build.VERSION.SDK_INT >= 33) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f))
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    "LƯU Ý QUAN TRỌNG CHO ANDROID 13/14/15/16:",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Text(
+                                    "Nếu hệ thống báo 'Ứng dụng đã bị từ chối cấp quyền' (Restricted Settings), hãy bỏ chặn theo 3 bước sau:",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f),
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                
+                                val steps = listOf(
+                                    "Bước 1: Mở Cài đặt hệ thống -> Ứng dụng -> Chọn AppLock.",
+                                    "Bước 2: Nhấn nút ⋮ (3 chấm) ở góc trên bên phải màn hình thông tin ứng dụng AppLock.",
+                                    "Bước 3: Chọn 'Cho phép cài đặt bị hạn chế' (Allow restricted settings), xác nhận mật khẩu điện thoại.",
+                                    "Bước 4: Trở lại đây, nhấn nút bên dưới để bật Hỗ trợ tiếp cận AppLock thành công!"
+                                )
+                                
+                                steps.forEach { step ->
+                                    Row(
+                                        modifier = Modifier.padding(vertical = 3.dp),
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Text(
+                                            "• ",
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            text = step,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(14.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                if (!isOverlayEnabled) {
+                                    Button(
+                                        onClick = {
+                                            val intent = Intent(
+                                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                Uri.parse("package:${context.packageName}")
+                                            )
+                                            context.startActivity(intent)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.onErrorContainer,
+                                            contentColor = MaterialTheme.colorScheme.errorContainer
+                                        ),
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    ) {
+                                        Text("Cấp quyền Vẽ đè")
+                                    }
+                                }
+                                if (!isAccessibilityEnabled) {
+                                    Button(
+                                        onClick = {
+                                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                            context.startActivity(intent)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.onErrorContainer,
+                                            contentColor = MaterialTheme.colorScheme.errorContainer
+                                        )
+                                    ) {
+                                        Text("Bật Hỗ trợ tiếp cận")
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(filteredApps, key = { it.packageName }) { app ->
-                        AppRowItem(
-                            app = app,
-                            onToggleLock = { isChecked ->
-                                viewModel.toggleAppLock(app.packageName, app.appName, isChecked)
-                            }
-                        )
+
+                // Central Items list container
+                if (isLoadingApps) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                } else if (filteredApps.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.LockOpen,
+                                contentDescription = "Trống",
+                                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "Không tìm thấy ứng dụng nào",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(filteredApps, key = { it.packageName }) { app ->
+                            AppRowItem(
+                                app = app,
+                                onToggleLock = { isChecked ->
+                                    viewModel.toggleAppLock(app.packageName, app.appName, isChecked)
+                                }
+                            )
+                        }
                     }
                 }
             }
+        } else {
+            UtilitiesScreen(
+                viewModel = viewModel,
+                modifier = Modifier.padding(innerPadding)
+            )
         }
     }
 }

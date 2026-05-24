@@ -240,4 +240,14 @@ object SecurityUtils {
             .putString("security_answer", answer.trim().lowercase())
             .apply()
     }
+
+    fun isUtilityDownloaded(context: Context, utilityId: String): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean("utils_downloaded_$utilityId", false)
+    }
+
+    fun setUtilityDownloaded(context: Context, utilityId: String, downloaded: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("utils_downloaded_$utilityId", downloaded).apply()
+    }
 }

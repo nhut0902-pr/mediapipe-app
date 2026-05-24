@@ -156,7 +156,25 @@ class AppLockViewModel(application: Application) : AndroidViewModel(application)
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    private val _downloadedUtilities = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val downloadedUtilities: StateFlow<Map<String, Boolean>> = _downloadedUtilities.asStateFlow()
+
+    fun loadDownloadedUtilities() {
+        val context = getApplication<Application>()
+        _downloadedUtilities.value = mapOf(
+            "calendar" to SecurityUtils.isUtilityDownloaded(context, "calendar"),
+            "calculator" to SecurityUtils.isUtilityDownloaded(context, "calculator")
+        )
+    }
+
+    fun setUtilityDownloaded(utilityId: String, status: Boolean) {
+        val context = getApplication<Application>()
+        SecurityUtils.setUtilityDownloaded(context, utilityId, status)
+        loadDownloadedUtilities()
+    }
+
     init {
+        loadDownloadedUtilities()
         // Sync cache and load lists
         viewModelScope.launch {
             repository.allLockedApps.collect { lockedList ->
