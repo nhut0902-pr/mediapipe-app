@@ -48,6 +48,9 @@ fun SettingsScreen(
     val scheduleEndHour by viewModel.scheduleEndHour.collectAsStateWithLifecycle()
     val scheduleEndMinute by viewModel.scheduleEndMinute.collectAsStateWithLifecycle()
 
+    val appIconDisguise by viewModel.appIconDisguise.collectAsStateWithLifecycle()
+    var showDisguiseDialog by remember { mutableStateOf(false) }
+
     var showStartTimerDialog by remember { mutableStateOf(false) }
     var showEndTimerDialog by remember { mutableStateOf(false) }
     var tempStartHour by remember { mutableStateOf(22) }
@@ -184,6 +187,32 @@ fun SettingsScreen(
                 }
             }
 
+            // Section 1.8: Ngụy trang ứng dụng
+            Text(
+                "NGỤY TRANG ỨNG DỤNG",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                val disguiseText = when (appIconDisguise) {
+                    "CALCULATOR" -> "Máy tính"
+                    "WEATHER" -> "Thời tiết"
+                    "CALENDAR" -> "Lịch"
+                    else -> "Mặc định (AppLock)"
+                }
+                SettingsClickableRow(
+                    title = "Ngụy trang Biểu tượng",
+                    subtitle = "Cách hiển thị ngoài launcher: $disguiseText",
+                    icon = Icons.Default.VisibilityOff,
+                    onClick = { showDisguiseDialog = true }
+                )
+            }
+
             // Section 2: Tài khoản & Passcode
             Text(
                 "BẢO MẬT & MẬT MÃ",
@@ -286,7 +315,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Phiên bản: 1.5.3",
+                            "Phiên bản: 1.5.4",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -319,6 +348,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        UpdateBulletItem("Ngụy trang biểu tượng ứng dụng", "Thay đổi tên và biểu tượng hiển thị ngoài màn hình chính để đánh lạc hướng (Máy tính, Thời tiết, Lịch bản đồ...)")
                         UpdateBulletItem("Hẹn giờ khóa ứng dụng", "Thiết lập khung giờ đóng/mở bảo vệ tự động (Bật/tắt trong Cài đặt phía trên).")
                         UpdateBulletItem("Tích hợp Widget màn hình chính", "Tiện ích ngoài màn hình chính hiển thị trạng thái và mở khóa nhanh.")
                         UpdateBulletItem("Nhật ký truy cập bảo mật", "Ghi lại chi tiết lịch sử đóng/mở ứng dụng để kiểm soát an toàn.")
@@ -583,6 +613,131 @@ fun SettingsScreen(
                 }
             }
         )
+    }
+
+    // App Icon Disguise Picker Dialog
+    if (showDisguiseDialog) {
+        var tempSelectedDisguise by remember { mutableStateOf(appIconDisguise) }
+        AlertDialog(
+            onDismissRequest = { showDisguiseDialog = false },
+            title = { Text("Chọn biểu tượng ngụy trang", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Khi thay đổi biểu tượng ngụy trang, tên và icon ứng dụng ngoài màn hình chính sẽ thay đổi tương ứng.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    DisguiseOptionRow(
+                        title = "Mặc định (AppLock)",
+                        desc = "Biểu tượng bảo mật hình tấm khiên an toàn",
+                        iconRes = com.example.R.drawable.img_app_icon,
+                        selected = tempSelectedDisguise == "DEFAULT",
+                        onSelect = { tempSelectedDisguise = "DEFAULT" }
+                    )
+
+                    DisguiseOptionRow(
+                        title = "Máy tính (Calculator)",
+                        desc = "Ngụy trang dưới dạng máy tính bỏ túi",
+                        iconRes = com.example.R.drawable.ic_disguise_calculator_vector,
+                        selected = tempSelectedDisguise == "CALCULATOR",
+                        onSelect = { tempSelectedDisguise = "CALCULATOR" }
+                    )
+
+                    DisguiseOptionRow(
+                        title = "Thời tiết (Weather)",
+                        desc = "Ngụy trang dưới dạng ứng dụng thời tiết",
+                        iconRes = com.example.R.drawable.ic_disguise_weather_vector,
+                        selected = tempSelectedDisguise == "WEATHER",
+                        onSelect = { tempSelectedDisguise = "WEATHER" }
+                    )
+
+                    DisguiseOptionRow(
+                        title = "Lịch (Calendar)",
+                        desc = "Ngụy trang dưới dạng lịch biểu tiện ích",
+                        iconRes = com.example.R.drawable.ic_disguise_calendar_vector,
+                        selected = tempSelectedDisguise == "CALENDAR",
+                        onSelect = { tempSelectedDisguise = "CALENDAR" }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.setAppIconDisguise(tempSelectedDisguise)
+                        showDisguiseDialog = false
+                        Toast.makeText(context, "Thay đổi Biểu tượng hoàn tất! Launcher sẽ cần khoảng vài giây để cập nhật lại giao diện hoàn toàn.", Toast.LENGTH_LONG).show()
+                    }
+                ) {
+                    Text("Xác nhận")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisguiseDialog = false }) {
+                    Text("Đóng")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun DisguiseOptionRow(
+    title: String,
+    desc: String,
+    iconRes: Int,
+    selected: Boolean,
+    onSelect: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onSelect() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onSelect
+        )
+        
+        // Icon preview base
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                desc,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+            )
+        }
     }
 }
 

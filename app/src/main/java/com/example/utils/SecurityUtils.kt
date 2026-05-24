@@ -13,6 +13,7 @@ object SecurityUtils {
     private const val KEY_SCHEDULE_START_MINUTE = "schedule_start_minute"
     private const val KEY_SCHEDULE_END_HOUR = "schedule_end_hour"
     private const val KEY_SCHEDULE_END_MINUTE = "schedule_end_minute"
+    private const val KEY_APP_ICON_DISGUISE = "app_icon_disguise"
 
     fun sha256(input: String): String {
         return try {
@@ -156,6 +157,39 @@ object SecurityUtils {
             current >= start || current <= end
         } else {
             true
+        }
+    }
+
+    fun getAppIconDisguise(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_APP_ICON_DISGUISE, "DEFAULT") ?: "DEFAULT"
+    }
+
+    fun setAppIconDisguise(context: Context, style: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_APP_ICON_DISGUISE, style).apply()
+
+        val pm = context.packageManager
+        val packageName = context.packageName
+
+        val components = mapOf(
+            "DEFAULT" to android.content.ComponentName(packageName, "$packageName.MainActivity"),
+            "CALCULATOR" to android.content.ComponentName(packageName, "$packageName.MainActivityAliasCalculator"),
+            "WEATHER" to android.content.ComponentName(packageName, "$packageName.MainActivityAliasWeather"),
+            "CALENDAR" to android.content.ComponentName(packageName, "$packageName.MainActivityAliasCalendar")
+        )
+
+        components.forEach { (key, component) ->
+            val state = if (key == style) {
+                android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            } else {
+                android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            }
+            try {
+                pm.setComponentEnabledSetting(component, state, android.content.pm.PackageManager.DONT_KILL_APP)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }

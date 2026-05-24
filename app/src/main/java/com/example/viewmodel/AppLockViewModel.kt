@@ -39,6 +39,14 @@ class AppLockViewModel(application: Application) : AndroidViewModel(application)
         _lockDelaySeconds.value = seconds
     }
 
+    private val _appIconDisguise = MutableStateFlow(SecurityUtils.getAppIconDisguise(application))
+    val appIconDisguise: StateFlow<String> = _appIconDisguise.asStateFlow()
+
+    fun setAppIconDisguise(style: String) {
+        SecurityUtils.setAppIconDisguise(getApplication(), style)
+        _appIconDisguise.value = style
+    }
+
     private val _isScheduleEnabled = MutableStateFlow(SecurityUtils.isScheduleEnabled(application))
     val isScheduleEnabled: StateFlow<Boolean> = _isScheduleEnabled.asStateFlow()
 
