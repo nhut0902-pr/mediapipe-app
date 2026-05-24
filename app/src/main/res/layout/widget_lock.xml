@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="8dp">
+
+    <!-- Card Background -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/ic_launcher_background"
+        android:padding="12dp">
+
+        <!-- Lock Icon Header -->
+        <ImageView
+            android:id="@+id/widget_icon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_widget_lock_logo"
+            android:contentDescription="Widget Lock Icon"
+            android:layout_marginBottom="6dp" />
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AppLock Active"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <!-- Subtitle State -->
+        <TextView
+            android:id="@+id/widget_state"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bảo vệ: Kích hoạt"
+            android:textColor="#38BDF8"
+            android:textSize="10sp"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
+</RelativeLayout>
