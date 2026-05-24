@@ -159,12 +159,17 @@ class AppLockViewModel(application: Application) : AndroidViewModel(application)
     private val _downloadedUtilities = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val downloadedUtilities: StateFlow<Map<String, Boolean>> = _downloadedUtilities.asStateFlow()
 
+    private val utilityKeys = listOf(
+        "calendar", "calculator", "notes", "stopwatch", "flashlight",
+        "bmi", "converter", "expense", "sound", "password", "qrcode", "bubblepop"
+    )
+
     fun loadDownloadedUtilities() {
         val context = getApplication<Application>()
-        _downloadedUtilities.value = mapOf(
-            "calendar" to SecurityUtils.isUtilityDownloaded(context, "calendar"),
-            "calculator" to SecurityUtils.isUtilityDownloaded(context, "calculator")
-        )
+        val map = utilityKeys.associateWith { key ->
+            SecurityUtils.isUtilityDownloaded(context, key)
+        }
+        _downloadedUtilities.value = map
     }
 
     fun setUtilityDownloaded(utilityId: String, status: Boolean) {
