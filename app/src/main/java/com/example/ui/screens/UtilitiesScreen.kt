@@ -85,14 +85,10 @@ fun UtilitiesScreen(
             UtilityMeta("notes", "Ghi chú nhanh Bảo mật", "Cuốn sổ tay cá nhân lưu trữ các ý tưởng, công việc cần làm, nhật ký mật và chức năng mã hóa bảo mật.", Icons.Default.Edit, "0.9 MB"),
             UtilityMeta("stopwatch", "Bấm giờ & Đếm ngược", "Đo thời gian hoạt động thể thao, lập danh sách vòng chạy (Lap) và cài đặt chuông đếm ngược.", Icons.Default.Timer, "0.7 MB"),
             UtilityMeta("flashlight", "Đèn pin thông minh", "Bật đèn chiếu sáng thông qua camera Flash hoặc chiếu toàn màn hình đa màu sắc với tần số nhấp nháy SOS.", Icons.Default.LightMode, "0.6 MB"),
-            UtilityMeta("bmi", "Theo dõi sức khỏe BMI", "Tính toán chỉ số khối cơ thể (BMI) từ chiều cao, cân nặng và cung cấp đánh giá sức khỏe khoa học.", Icons.Default.Favorite, "0.8 MB"),
-            UtilityMeta("converter", "Chuyển đơn vị Đa năng", "Công cụ chuyển đổi nhanh các đại lượng vật lý phổ biến: Chiều dài, Cân nặng, Nhiệt độ nhanh chóng.", Icons.Default.SwapHoriz, "1.1 MB"),
-            UtilityMeta("expense", "Quản lý chi tiêu Cá nhân", "Ghi chép doanh thu, chi phí, phân chia danh mục sinh hoạt giúp kiểm soát ví tiền cá nhân tối ưu.", Icons.Default.AccountBalanceWallet, "1.5 MB"),
-            UtilityMeta("sound", "Tiếng ồn trắng & Giấc ngủ", "Phát các âm thanh thiên nhiên êm dịu (Mưa rơi, Sóng biển, Tiếng gió) mô phỏng giúp thư giãn tâm trí.", Icons.Default.MusicNote, "2.4 MB"),
             UtilityMeta("password", "Trình tạo mật khẩu Cực mạnh", "Sản sinh mật khẩu bảo mật tuyệt đối với tùy chọn độ dài, chữ số, ký tự đặc biệt và sao chép 1 chạm.", Icons.Default.VpnKey, "0.5 MB"),
             UtilityMeta("qrcode", "Tạo và Quét mã QR", "Tạo mã QR tùy biến từ văn bản/đường dẫn url cá nhân và trình quét mô phỏng hiệu ứng laser chuyên nghiệp.", Icons.Default.QrCode, "1.3 MB"),
-            UtilityMeta("bubblepop", "Stress Bubble Pop Game", "Bong bóng hơi xả stress, bấm bong bóng phát các rung động thư giãn và theo dõi điểm kỷ lục cực hay.", Icons.Default.Gamepad, "1.6 MB"),
-            UtilityMeta("heartrate", "Đo nhịp tim sinh học PPG", "Công cụ đo nhịp tim bằng camera và đèn Flash thông qua phân tích biến thiên hồng cầu dưới da ngón tay.", Icons.Default.Favorite, "1.4 MB")
+            UtilityMeta("heartrate", "Đo nhịp tim sinh học PPG", "Công cụ đo nhịp tim bằng camera và đèn Flash thông qua phân tích biến thiên hồng cầu dưới da ngón tay.", Icons.Default.Favorite, "1.4 MB"),
+            UtilityMeta("tiktok", "Tải video TikTok không logo", "Công cụ hỗ trợ tải video và ảnh từ TikTok không chứa logo/watermark.", Icons.Default.Download, "2.2 MB")
         )
     }
 
@@ -106,14 +102,10 @@ fun UtilitiesScreen(
                 "notes" -> NotesView(onBack = { onActiveUtilIdChange(null) })
                 "stopwatch" -> StopwatchView(onBack = { onActiveUtilIdChange(null) })
                 "flashlight" -> FlashlightView(onBack = { onActiveUtilIdChange(null) })
-                "bmi" -> BmiCalculatorView(onBack = { onActiveUtilIdChange(null) })
-                "converter" -> UnitConverterView(onBack = { onActiveUtilIdChange(null) })
-                "expense" -> ExpenseTrackerView(onBack = { onActiveUtilIdChange(null) })
-                "sound" -> RelaxSoundView(onBack = { onActiveUtilIdChange(null) })
                 "password" -> PasswordGeneratorView(onBack = { onActiveUtilIdChange(null) })
                 "qrcode" -> QrCodeView(onBack = { onActiveUtilIdChange(null) })
-                "bubblepop" -> BubblePopView(onBack = { onActiveUtilIdChange(null) })
                 "heartrate" -> HeartRateView(onBack = { onActiveUtilIdChange(null) })
+                "tiktok" -> TikTokDownloaderView(onBack = { onActiveUtilIdChange(null) })
             }
         } else {
             Column(
