@@ -12,6 +12,9 @@ object AppLockManager {
     // Set of packages unlocked during the current session
     val unlockedInSession = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     
+    // Tracks the exact system time when a package was last unlocked or left (exit timestamp)
+    val lastUnlockedTimeMap = java.util.Collections.synchronizedMap(mutableMapOf<String, Long>())
+    
     // The last package we checked 
     var lastActivePackage: String? = null
 }

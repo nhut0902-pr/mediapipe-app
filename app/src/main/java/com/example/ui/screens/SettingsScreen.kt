@@ -42,6 +42,19 @@ fun SettingsScreen(
     val isOverallActive by viewModel.isOverallActive.collectAsStateWithLifecycle()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsStateWithLifecycle()
     
+    val isScheduleEnabled by viewModel.isScheduleEnabled.collectAsStateWithLifecycle()
+    val scheduleStartHour by viewModel.scheduleStartHour.collectAsStateWithLifecycle()
+    val scheduleStartMinute by viewModel.scheduleStartMinute.collectAsStateWithLifecycle()
+    val scheduleEndHour by viewModel.scheduleEndHour.collectAsStateWithLifecycle()
+    val scheduleEndMinute by viewModel.scheduleEndMinute.collectAsStateWithLifecycle()
+
+    var showStartTimerDialog by remember { mutableStateOf(false) }
+    var showEndTimerDialog by remember { mutableStateOf(false) }
+    var tempStartHour by remember { mutableStateOf(22) }
+    var tempStartMin by remember { mutableStateOf(0) }
+    var tempEndHour by remember { mutableStateOf(6) }
+    var tempEndMin by remember { mutableStateOf(0) }
+
     var showChangePinDialog by remember { mutableStateOf(false) }
     var tempNewPin by remember { mutableStateOf("") }
     var tempConfirmPin by remember { mutableStateOf("") }
@@ -117,6 +130,57 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.setBiometricEnabled(it) },
                         enabled = BiometricHelper.isBiometricAvailable(context)
                     )
+                }
+            }
+
+            // Section 1.5: Hẹn giờ bảo mật
+            Text(
+                "HẸN GIỜ BẢO MẬT",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column {
+                    SettingsToggleRow(
+                        title = "Kích hoạt Hẹn giờ khóa",
+                        subtitle = "Chỉ bật bảo vệ trong khoảng thời gian hẹn giờ cụ thể",
+                        icon = Icons.Default.Schedule,
+                        checked = isScheduleEnabled,
+                        onCheckedChange = { viewModel.setScheduleEnabled(it) }
+                    )
+                    
+                    if (isScheduleEnabled) {
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        
+                        SettingsClickableRow(
+                            title = "Thời gian Bắt đầu",
+                            subtitle = String.format("%02d:%02d", scheduleStartHour, scheduleStartMinute),
+                            icon = Icons.Default.PlayArrow,
+                            onClick = {
+                                tempStartHour = scheduleStartHour
+                                tempStartMin = scheduleStartMinute
+                                showStartTimerDialog = true
+                            }
+                        )
+                        
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        
+                        SettingsClickableRow(
+                            title = "Thời gian Kết thúc",
+                            subtitle = String.format("%02d:%02d", scheduleEndHour, scheduleEndMinute),
+                            icon = Icons.Default.Stop,
+                            onClick = {
+                                tempEndHour = scheduleEndHour
+                                tempEndMin = scheduleEndMinute
+                                showEndTimerDialog = true
+                            }
+                        )
+                    }
                 }
             }
 
@@ -216,12 +280,56 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Phiên bản: 1.5.2",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Box(
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                "MỚI NHẤT",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
                     Text(
-                        "Chế độ Tối ưu (Dark Mode): Hoạt động tự động theo cấu hình hệ thống.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        "THÔNG TIN CẬP NHẬT CÓ GÌ MỚI:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
+                    
                     Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        UpdateBulletItem("Hẹn giờ khóa ứng dụng", "Thiết lập khung giờ đóng/mở bảo vệ tự động (Bật/tắt trong Cài đặt phía trên).")
+                        UpdateBulletItem("Tích hợp Widget màn hình chính", "Tiện ích ngoài màn hình chính hiển thị trạng thái và mở khóa nhanh.")
+                        UpdateBulletItem("Nhật ký truy cập bảo mật", "Ghi lại chi tiết lịch sử đóng/mở ứng dụng để kiểm soát an toàn.")
+                        UpdateBulletItem("Tối ưu hóa đa nhiệm v2", "Cơ chế chống Bypass chặn đứng xâm nhập qua cử chỉ chuyển trang vuốt.")
+                        UpdateBulletItem("Vá lỗi & Tăng độ tin cậy", "Sửa đổi phản hồi vân tay & gia tăng tính mượt mà của màn che.")
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     Text(
                         "Cơ chế Chống Bypass: Tự động khóa lại ứng dụng ngay lập tức khi người sử dụng chuyển qua đa nhiệm sang app khác, ngăn chặn hoàn toàn việc rò rỉ nội dung bảo mật.",
                         style = MaterialTheme.typography.bodySmall,
@@ -290,6 +398,188 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showChangePinDialog = false }) {
                     Text("Hủy bỏ")
+                }
+            }
+        )
+    }
+
+    // Start Timer Picker Dialog
+    if (showStartTimerDialog) {
+        AlertDialog(
+            onDismissRequest = { showStartTimerDialog = false },
+            title = { Text("Chọn thời gian Bắt đầu", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Hour Column
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("Giờ", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            FilledIconButton(
+                                onClick = { tempStartHour = (tempStartHour + 1) % 24 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowUp, null)
+                            }
+                            Text(
+                                text = String.format("%02d", tempStartHour),
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            FilledIconButton(
+                                onClick = { tempStartHour = if (tempStartHour - 1 < 0) 23 else tempStartHour - 1 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowDown, null)
+                            }
+                        }
+                        
+                        Text(
+                            text = ":",
+                            style = MaterialTheme.typography.displayMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+
+                        // Minute Column
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("Phút", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            FilledIconButton(
+                                onClick = { tempStartMin = (tempStartMin + 5) % 60 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowUp, null)
+                            }
+                            Text(
+                                text = String.format("%02d", tempStartMin),
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            FilledIconButton(
+                                onClick = { tempStartMin = if (tempStartMin - 5 < 0) 55 else tempStartMin - 5 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowDown, null)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.setScheduleStartTime(tempStartHour, tempStartMin)
+                        showStartTimerDialog = false
+                    }
+                ) {
+                    Text("Xác nhận")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartTimerDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
+    // End Timer Picker Dialog
+    if (showEndTimerDialog) {
+        AlertDialog(
+            onDismissRequest = { showEndTimerDialog = false },
+            title = { Text("Chọn thời gian Kết thúc", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Hour Column
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("Giờ", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            FilledIconButton(
+                                onClick = { tempEndHour = (tempEndHour + 1) % 24 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowUp, null)
+                            }
+                            Text(
+                                text = String.format("%02d", tempEndHour),
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            FilledIconButton(
+                                onClick = { tempEndHour = if (tempEndHour - 1 < 0) 23 else tempEndHour - 1 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowDown, null)
+                            }
+                        }
+                        
+                        Text(
+                            text = ":",
+                            style = MaterialTheme.typography.displayMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+
+                        // Minute Column
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("Phút", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            FilledIconButton(
+                                onClick = { tempEndMin = (tempEndMin + 5) % 60 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowUp, null)
+                            }
+                            Text(
+                                text = String.format("%02d", tempEndMin),
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            FilledIconButton(
+                                onClick = { tempEndMin = if (tempEndMin - 5 < 0) 55 else tempEndMin - 5 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowDown, null)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.setScheduleEndTime(tempEndHour, tempEndMin)
+                        showEndTimerDialog = false
+                    }
+                ) {
+                    Text("Xác nhận")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndTimerDialog = false }) {
+                    Text("Hủy")
                 }
             }
         )
@@ -434,5 +724,33 @@ fun SettingsStatusRow(
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
         )
+    }
+}
+
+@Composable
+fun UpdateBulletItem(title: String, description: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            "• ",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+            )
+        }
     }
 }

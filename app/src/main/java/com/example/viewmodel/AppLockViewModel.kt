@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 
 class AppLockViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getInstance(application)
-    private val repository = AppLockRepository(database.lockedAppDao)
+    private val repository = AppLockRepository(database.lockedAppDao, database.securityLogDao)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -30,6 +30,52 @@ class AppLockViewModel(application: Application) : AndroidViewModel(application)
 
     private val _isBiometricEnabled = MutableStateFlow(SecurityUtils.isBiometricEnabled(application))
     val isBiometricEnabled: StateFlow<Boolean> = _isBiometricEnabled.asStateFlow()
+
+    private val _lockDelaySeconds = MutableStateFlow(SecurityUtils.getLockDelaySeconds(application))
+    val lockDelaySeconds: StateFlow<Int> = _lockDelaySeconds.asStateFlow()
+
+    fun setLockDelaySeconds(seconds: Int) {
+        SecurityUtils.setLockDelaySeconds(getApplication(), seconds)
+        _lockDelaySeconds.value = seconds
+    }
+
+    private val _isScheduleEnabled = MutableStateFlow(SecurityUtils.isScheduleEnabled(application))
+    val isScheduleEnabled: StateFlow<Boolean> = _isScheduleEnabled.asStateFlow()
+
+    private val _scheduleStartHour = MutableStateFlow(SecurityUtils.getScheduleStartHour(application))
+    val scheduleStartHour: StateFlow<Int> = _scheduleStartHour.asStateFlow()
+
+    private val _scheduleStartMinute = MutableStateFlow(SecurityUtils.getScheduleStartMinute(application))
+    val scheduleStartMinute: StateFlow<Int> = _scheduleStartMinute.asStateFlow()
+
+    private val _scheduleEndHour = MutableStateFlow(SecurityUtils.getScheduleEndHour(application))
+    val scheduleEndHour: StateFlow<Int> = _scheduleEndHour.asStateFlow()
+
+    private val _scheduleEndMinute = MutableStateFlow(SecurityUtils.getScheduleEndMinute(application))
+    val scheduleEndMinute: StateFlow<Int> = _scheduleEndMinute.asStateFlow()
+
+    fun setScheduleEnabled(enabled: Boolean) {
+        SecurityUtils.setScheduleEnabled(getApplication(), enabled)
+        _isScheduleEnabled.value = enabled
+    }
+
+    fun setScheduleStartTime(hour: Int, minute: Int) {
+        SecurityUtils.setScheduleStartHour(getApplication(), hour)
+        SecurityUtils.setScheduleStartMinute(getApplication(), minute)
+        _scheduleStartHour.value = hour
+        _scheduleStartMinute.value = minute
+    }
+
+    fun setScheduleEndTime(hour: Int, minute: Int) {
+        SecurityUtils.setScheduleEndHour(getApplication(), hour)
+        SecurityUtils.setScheduleEndMinute(getApplication(), minute)
+        _scheduleEndHour.value = hour
+        _scheduleEndMinute.value = minute
+    }
+
+    // Expose security logs as a state flow auto-updated
+    val securityLogs: StateFlow<List<com.example.model.SecurityLog>> = repository.allSecurityLogs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Combined state for filtered apps list
     val filteredApps: StateFlow<List<AppInfo>> = combine(
@@ -117,5 +163,17 @@ class AppLockViewModel(application: Application) : AndroidViewModel(application)
 
     fun verifyPasscode(pin: String): Boolean {
         return SecurityUtils.verifyPasscode(getApplication(), pin)
+    }
+
+    fun clearAllSecurityLogs() {
+        viewModelScope.launch {
+            repository.clearSecurityLogs()
+        }
+    }
+
+    fun deleteSecurityLog(id: Int) {
+        viewModelScope.launch {
+            repository.deleteSecurityLog(id)
+        }
     }
 }

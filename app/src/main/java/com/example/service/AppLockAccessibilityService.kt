@@ -53,6 +53,8 @@ class AppLockAccessibilityService : AccessibilityService() {
         val lastPkg = lastPackageName
         if (lastPkg != null && lastPkg != packageName) {
             if (AppLockManager.lockedPackagesCache.contains(lastPkg)) {
+                // Save exit time of locked app before clearing from active session list
+                AppLockManager.lastUnlockedTimeMap[lastPkg] = System.currentTimeMillis()
                 AppLockManager.unlockedInSession.remove(lastPkg)
             }
         }
@@ -60,13 +62,23 @@ class AppLockAccessibilityService : AccessibilityService() {
         lastPackageName = packageName
         AppLockManager.lastActivePackage = packageName
 
-        // Check overall applock state
-        if (!SecurityUtils.isAppLockOverallActive(applicationContext)) {
+        // Check overall applock state and active time scheduler
+        if (!SecurityUtils.isAppLockCurrentlyActive(applicationContext)) {
             return
         }
 
         // Check cache if app package clicked is locked
         if (AppLockManager.lockedPackagesCache.contains(packageName)) {
+            // Check Lock Delay seconds config
+            val delaySeconds = SecurityUtils.getLockDelaySeconds(applicationContext)
+            if (delaySeconds > 0) {
+                val lastExitTime = AppLockManager.lastUnlockedTimeMap[packageName]
+                if (lastExitTime != null && (System.currentTimeMillis() - lastExitTime) < (delaySeconds * 1000L)) {
+                    // Automatically add back to session as the lock delay time has not expired
+                    AppLockManager.unlockedInSession.add(packageName)
+                }
+            }
+
             // Check session to optimize prompt frequency
             if (AppLockManager.unlockedInSession.contains(packageName)) {
                 return // Safe, already unlocked in this session
