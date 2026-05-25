@@ -220,7 +220,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     _activeMessages.value = _activeMessages.value.filter { it !is ChatMessageItem.Temporary }
 
                     if (response.isSuccessful) {
-                        val rawAiResponseText = response.body()?.response ?: "Không nhận được phản hồi."
+                        val body = response.body()
+                        val rawAiResponseText = body?.response
+                            ?: body?.text
+                            ?: body?.message
+                            ?: body?.output
+                            ?: body?.generated_text
+                            ?: "Không nhận được phản hồi."
                         animateAndSaveResponse(rawAiResponseText)
                     } else {
                         showErrorCard("Mã lỗi: ${response.code()}. Vui lòng kiểm tra lại cấu hình Endpoint.")

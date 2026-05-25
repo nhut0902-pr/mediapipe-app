@@ -14,7 +14,11 @@ data class ChatRequest(
 
 @JsonClass(generateAdapter = true)
 data class ChatResponse(
-    val response: String
+    val response: String? = null,
+    val text: String? = null,
+    val message: String? = null,
+    val output: String? = null,
+    val generated_text: String? = null
 )
 
 @JsonClass(generateAdapter = true)

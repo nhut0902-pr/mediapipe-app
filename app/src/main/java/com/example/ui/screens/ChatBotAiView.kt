@@ -1122,16 +1122,22 @@ private fun spacerBefore(): Modifier = Modifier.padding(end = 4.dp)
 private fun getFileNameHelper(context: android.content.Context, uri: android.net.Uri): String {
     var result: String? = null
     if (uri.scheme == "content") {
-        val cursor = context.contentResolver.query(uri, null, null, null, null)
         try {
-            if (cursor != null && cursor.moveToFirst()) {
-                val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                if (index != -1) {
-                    result = cursor.getString(index)
+            val cursor = context.contentResolver.query(uri, null, null, null, null)
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (index != -1) {
+                            result = cursor.getString(index)
+                        }
+                    }
+                } finally {
+                    cursor.close()
                 }
             }
-        } finally {
-            cursor?.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
     if (result == null) {
