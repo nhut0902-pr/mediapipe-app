@@ -8,7 +8,14 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +38,7 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
     var url by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var detectedPlatform by remember { mutableStateOf("") }
+    var mediaItems by remember { mutableStateOf<List<Map<String, String>>>(emptyList()) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     
@@ -66,6 +74,7 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
     
     LaunchedEffect(url) {
         detectedPlatform = getPlatform(url)
+        if (url.isBlank()) mediaItems = emptyList()
     }
 
     fun downloadVideo(videoUrl: String, fileName: String = "video_${System.currentTimeMillis()}.mp4") {
@@ -73,7 +82,6 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
             val request = DownloadManager.Request(Uri.parse(videoUrl))
             request.setTitle("Đang tải tệp")
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
             
             val mimeType = if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png")) {
                 "image/jpeg"
@@ -81,6 +89,9 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                 "video/mp4"
             }
             request.setMimeType(mimeType)
+            
+            val dirType = if (mimeType.startsWith("image/")) Environment.DIRECTORY_PICTURES else Environment.DIRECTORY_MOVIES
+            request.setDestinationInExternalPublicDir(dirType, fileName)
             
             @Suppress("DEPRECATION")
             request.allowScanningByMediaScanner()
@@ -103,7 +114,7 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Trở lại", tint = Color.White)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Trở lại", tint = Color.White)
             }
             Text("Tải video, ảnh đa nền tảng (beta)", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(start = 8.dp))
         }
@@ -156,18 +167,19 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                                     when (status) {
                                         "stream", "redirect" -> {
                                             val downloadUrl = jsonObj.getString("url")
-                                            downloadVideo(downloadUrl)
+                                            mediaItems = listOf(mapOf("url" to downloadUrl, "type" to "video"))
                                         }
                                         "picker" -> {
                                             val pickerArray = jsonObj.getJSONArray("picker")
-                                            Toast.makeText(context, "Tìm thấy ${pickerArray.length()} tệp. Đang tải...", Toast.LENGTH_SHORT).show()
+                                            val items = mutableListOf<Map<String, String>>()
                                             for (i in 0 until pickerArray.length()) {
                                                 val item = pickerArray.getJSONObject(i)
-                                                val type = item.optString("type", "file")
-                                                val ext = if (type == "photo") "jpg" else "mp4"
-                                                val downloadUrl = item.getString("url")
-                                                downloadVideo(downloadUrl, "media_${System.currentTimeMillis()}_$i.$ext")
+                                                items.add(mapOf(
+                                                    "url" to item.getString("url"),
+                                                    "type" to item.optString("type", "photo")
+                                                ))
                                             }
+                                            mediaItems = items
                                         }
                                         "error" -> {
                                             val text = jsonObj.optString("text", "Lỗi không xác định")
@@ -176,7 +188,7 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                                         else -> {
                                             if (jsonObj.has("url")) {
                                                 val downloadUrl = jsonObj.getString("url")
-                                                downloadVideo(downloadUrl)
+                                                mediaItems = listOf(mapOf("url" to downloadUrl, "type" to "video"))
                                             } else {
                                                 Toast.makeText(context, "Không thể xử lý phản hồi: $status", Toast.LENGTH_SHORT).show()
                                             }
@@ -207,7 +219,60 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
             if (isLoading) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
             } else {
-                Text("Tải xuống", fontWeight = FontWeight.Bold)
+                Text(if (mediaItems.isEmpty()) "Kiểm tra link" else "Tải lại", fontWeight = FontWeight.Bold)
+            }
+        }
+        
+        if (mediaItems.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Kết quả (${mediaItems.size} tệp):", color = Color.White, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(mediaItems.size) { index ->
+                    val item = mediaItems[index]
+                    val type = item["type"] ?: "video"
+                    val itemUrl = item["url"] ?: ""
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1F2A))
+                    ) {
+                        Row(
+                           modifier = Modifier.padding(8.dp),
+                           verticalAlignment = Alignment.CenterVertically
+                        ) {
+                           if (type == "photo") {
+                                AsyncImage(
+                                    model = itemUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                           } else {
+                                Box(
+                                    modifier = Modifier.size(80.dp).background(Color.DarkGray, RoundedCornerShape(8.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Filled.PlayArrow, contentDescription = "Video", tint = Color.White)
+                                }
+                           }
+                           
+                           Spacer(modifier = Modifier.width(16.dp))
+                           
+                           Column(modifier = Modifier.weight(1f)) {
+                               Text(if (type == "photo") "Hình ảnh" else "Video", color = Color.White, fontWeight = FontWeight.Bold)
+                           }
+                           
+                           IconButton(onClick = {
+                               val ext = if (type == "photo") "jpg" else "mp4"
+                               downloadVideo(itemUrl, "media_${System.currentTimeMillis()}_$index.$ext")
+                           }) {
+                               Icon(Icons.Filled.Download, contentDescription = "Tải", tint = Color(0xFFFF0050))
+                           }
+                        }
+                    }
+                }
             }
         }
     }
