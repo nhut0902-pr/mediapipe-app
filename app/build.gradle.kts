@@ -15,8 +15,8 @@ android {
     applicationId = "com.aistudio.gesturegames.vtzrkw"
     minSdk = 26
     targetSdk = 36
-    versionCode = 30
-    versionName = "1.6.14"
+    versionCode = 31
+    versionName = "1.6.15"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

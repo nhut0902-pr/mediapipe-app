@@ -6,8 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.database.AppDatabase
 import com.example.model.ChatMessage
-import com.example.service.ChatRequest
-import com.example.service.RetrofitClient
+import com.example.service.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +28,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _apiUrl = MutableStateFlow(prefs.getString("api_url", defaultApiUrl) ?: defaultApiUrl)
     val apiUrl: StateFlow<String> = _apiUrl.asStateFlow()
+
+    // Configurable service type: "huggingface" (HF) or "nvidia" (Nvidia NIM)
+    private val _serviceType = MutableStateFlow(prefs.getString("service_type", "huggingface") ?: "huggingface")
+    val serviceType: StateFlow<String> = _serviceType.asStateFlow()
+
+    // Default Nvidia key requested by the user
+    private val defaultNvidiaKey = "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"
+    private val _nvidiaApiKey = MutableStateFlow(prefs.getString("nvidia_api_key", defaultNvidiaKey) ?: defaultNvidiaKey)
+    val nvidiaApiKey: StateFlow<String> = _nvidiaApiKey.asStateFlow()
+
+    private val _nvidiaModel = MutableStateFlow(prefs.getString("nvidia_model", "nvidia/llama-3.1-nemotron-70b-instruct") ?: "nvidia/llama-3.1-nemotron-70b-instruct")
+    val nvidiaModel: StateFlow<String> = _nvidiaModel.asStateFlow()
 
     // Retrieve historical logs from local Room DB
     val savedMessages: StateFlow<List<ChatMessage>> = chatDao.getAllMessages()
@@ -75,6 +86,22 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putString("api_url", sanitized).apply()
     }
 
+    fun updateServiceType(type: String) {
+        _serviceType.value = type
+        prefs.edit().putString("service_type", type).apply()
+    }
+
+    fun updateNvidiaApiKey(key: String) {
+        val sanitized = key.trim()
+        _nvidiaApiKey.value = sanitized
+        prefs.edit().putString("nvidia_api_key", sanitized).apply()
+    }
+
+    fun updateNvidiaModel(model: String) {
+        _nvidiaModel.value = model
+        prefs.edit().putString("nvidia_model", model).apply()
+    }
+
     fun toggleTheme() {
         val newVal = !_isDarkTheme.value
         _isDarkTheme.value = newVal
@@ -92,7 +119,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             val userMsg = ChatMessage(text = lastSentMessageText, isUser = true)
             chatDao.insertMessage(userMsg)
 
-            // 1b. Clear error flags on sending success
+            // 1b. Create thinking slot
             val currentList = _activeMessages.value.toMutableList()
             // Append temporary AI thinking state
             val thinkingMsg = ChatMessageItem.Temporary(
@@ -105,19 +132,59 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             // 2. Query dynamic backend space
             try {
-                val currentEndpoint = _apiUrl.value
-                val request = ChatRequest(message = lastSentMessageText)
+                val isNvidia = _serviceType.value == "nvidia"
+                if (isNvidia) {
+                    val authHeader = "Bearer " + _nvidiaApiKey.value.trim()
+                    
+                    // Construct complete chat context for conversational memory
+                    val historyList = savedMessages.value.map { msg ->
+                        NvidiaChatMessage(
+                            role = if (msg.isUser) "user" else "assistant",
+                            content = msg.text
+                        )
+                    }.toMutableList()
 
-                val response = RetrofitClient.apiService.sendChat(currentEndpoint, request)
+                    if (historyList.isEmpty() || historyList.last().content != lastSentMessageText) {
+                        historyList.add(NvidiaChatMessage(role = "user", content = lastSentMessageText))
+                    }
 
-                // Remove the temporary AI thinking card
-                _activeMessages.value = _activeMessages.value.filter { it !is ChatMessageItem.Temporary }
+                    val nvidiaRequest = NvidiaChatRequest(
+                        model = _nvidiaModel.value,
+                        messages = historyList
+                    )
 
-                if (response.isSuccessful) {
-                    val rawAiResponseText = response.body()?.response ?: "Không nhận được phản hồi."
-                    animateAndSaveResponse(rawAiResponseText)
+                    val response = RetrofitClient.apiService.sendNvidiaChat(
+                        url = "https://integrate.api.nvidia.com/v1/chat/completions",
+                        authHeader = authHeader,
+                        request = nvidiaRequest
+                    )
+
+                    // Remove thinking animation
+                    _activeMessages.value = _activeMessages.value.filter { it !is ChatMessageItem.Temporary }
+
+                    if (response.isSuccessful) {
+                        val choices = response.body()?.choices
+                        val aiResponseText = choices?.firstOrNull()?.message?.content ?: "Không thể trích xuất nội dung từ phản hồi của NIM AI."
+                        animateAndSaveResponse(aiResponseText)
+                    } else {
+                        val errorDetail = response.errorBody()?.string() ?: ""
+                        showErrorCard("Lỗi NVIDIA NIM (Mã: ${response.code()})\n$errorDetail")
+                    }
                 } else {
-                    showErrorCard("Mã lỗi: ${response.code()}. Vui lòng kiểm tra lại cấu hình Endpoint.")
+                    val currentEndpoint = _apiUrl.value
+                    val request = ChatRequest(message = lastSentMessageText)
+
+                    val response = RetrofitClient.apiService.sendChat(currentEndpoint, request)
+
+                    // Remove the temporary AI thinking card
+                    _activeMessages.value = _activeMessages.value.filter { it !is ChatMessageItem.Temporary }
+
+                    if (response.isSuccessful) {
+                        val rawAiResponseText = response.body()?.response ?: "Không nhận được phản hồi."
+                        animateAndSaveResponse(rawAiResponseText)
+                    } else {
+                        showErrorCard("Mã lỗi: ${response.code()}. Vui lòng kiểm tra lại cấu hình Endpoint.")
+                    }
                 }
             } catch (e: IOException) {
                 // Remove thinking indicator
@@ -241,3 +308,4 @@ sealed interface ChatMessageItem {
         val isError: Boolean = false
     ) : ChatMessageItem
 }
+

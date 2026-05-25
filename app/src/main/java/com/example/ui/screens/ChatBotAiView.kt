@@ -5,6 +5,9 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +36,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,10 +59,33 @@ fun ChatBotAiView(
     val isGenerating by chatViewModel.isGenerating.collectAsStateWithLifecycle()
     val apiUrl by chatViewModel.apiUrl.collectAsStateWithLifecycle()
     val isDarkTheme by chatViewModel.isDarkTheme.collectAsStateWithLifecycle()
+    val serviceType by chatViewModel.serviceType.collectAsStateWithLifecycle()
+    val nvidiaApiKey by chatViewModel.nvidiaApiKey.collectAsStateWithLifecycle()
+    val nvidiaModel by chatViewModel.nvidiaModel.collectAsStateWithLifecycle()
 
     var showConfigDialog by remember { mutableStateOf(false) }
     var inputUrlText by remember { mutableStateOf(apiUrl) }
+    var inputApiKeyText by remember { mutableStateOf(nvidiaApiKey) }
+    var selectedServiceType by remember { mutableStateOf(serviceType) }
+    var selectedNvidiaModel by remember { mutableStateOf(nvidiaModel) }
+    var customModelInput by remember { mutableStateOf("") }
     var messageInput by remember { mutableStateOf("") }
+
+    LaunchedEffect(showConfigDialog) {
+        if (showConfigDialog) {
+            inputUrlText = apiUrl
+            inputApiKeyText = nvidiaApiKey
+            selectedServiceType = serviceType
+            selectedNvidiaModel = nvidiaModel
+            customModelInput = if (nvidiaModel !in listOf(
+                    "nvidia/llama-3.1-nemotron-70b-instruct",
+                    "meta/llama-3.1-8b-instruct",
+                    "meta/llama-3.1-70b-instruct",
+                    "meta/llama-3.1-405b-instruct",
+                    "mistralai/mixtral-8x22b-instruct-v0.1"
+                )) nvidiaModel else ""
+        }
+    }
 
     val listState = rememberLazyListState()
 
@@ -116,10 +144,16 @@ fun ChatBotAiView(
                                     fontSize = 17.sp
                                 )
                                 Text(
-                                    text = "Động cơ máy chủ nội bộ",
+                                    text = if (serviceType == "nvidia") {
+                                        val modelShort = nvidiaModel.substringAfterLast("/")
+                                        "NVIDIA NIM • $modelShort"
+                                    } else {
+                                        "Hugging Face AI"
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontSize = 11.sp
+                                    color = if (serviceType == "nvidia") Color(0xFF76B900) else MaterialTheme.colorScheme.primary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
@@ -226,30 +260,57 @@ fun ChatBotAiView(
                                     modifier = Modifier.padding(horizontal = 16.dp)
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Card(
-                                    colors = CardDefaults.cardColors(containerColor = cardAiBg),
-                                    modifier = Modifier.clickable {
-                                        inputUrlText = apiUrl
-                                        showConfigDialog = true
-                                    }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                if (serviceType == "nvidia") {
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = cardAiBg),
+                                        modifier = Modifier.clickable {
+                                            showConfigDialog = true
+                                        }
                                     ) {
-                                        Icon(
-                                            Icons.Default.Link,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = apiUrl,
-                                            fontSize = 11.sp,
-                                            fontFamily = FontFamily.Monospace,
-                                            color = onAiBg.copy(alpha = 0.8f)
-                                        )
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFF76B900))
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "NVIDIA NIM: $nvidiaModel",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = onAiBg.copy(alpha = 0.9f)
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = cardAiBg),
+                                        modifier = Modifier.clickable {
+                                            showConfigDialog = true
+                                        }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Link,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = apiUrl,
+                                                fontSize = 11.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                color = onAiBg.copy(alpha = 0.8f)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -501,48 +562,211 @@ fun ChatBotAiView(
         }
     }
 
-    // Dynamic Server URL settings pop up dialog
+    // Advanced Multi-Service Configuration Dialog
     if (showConfigDialog) {
         AlertDialog(
             onDismissRequest = { showConfigDialog = false },
             title = {
                 Text(
-                    text = "Cấu hình AI Endpoint",
+                    text = "Cấu hình AI Engine",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Text(
-                        text = "Vui lòng nhập Link API backend của bạn. Chatbot sẽ POST dữ liệu trực tiếp đến địa chỉ này.",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Chọn cấu hình và động cơ máy chủ gửi tin nhắn:",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
                     )
-                    OutlinedTextField(
-                        value = inputUrlText,
-                        onValueChange = { inputUrlText = it },
+
+                    // Tab Selector style buttons (Chips)
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
-                        label = { Text("Base URL hoặc Absolute URL") },
-                        singleLine = true
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Button(
-                        onClick = { inputUrlText = "https://nhut0902-chatbotai.hf.space/chat" },
-                        colors = ButtonDefaults.filledTonalButtonColors(),
-                        modifier = Modifier.fillMaxWidth()
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Khôi phục mặc định", fontSize = 11.sp)
+                        FilterChip(
+                            selected = selectedServiceType == "huggingface",
+                            onClick = { selectedServiceType = "huggingface" },
+                            label = { Text("Hugging Face", fontSize = 11.sp) },
+                            leadingIcon = if (selectedServiceType == "huggingface") {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                        FilterChip(
+                            selected = selectedServiceType == "nvidia",
+                            onClick = { selectedServiceType = "nvidia" },
+                            label = { Text("NVIDIA NIM", fontSize = 11.sp) },
+                            leadingIcon = if (selectedServiceType == "nvidia") {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF76B900).copy(alpha = 0.2f),
+                                selectedLabelColor = Color(0xFF3B5D00)
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    if (selectedServiceType == "huggingface") {
+                        // Hugging Face configuration view
+                        Text(
+                            text = "Hugging Face Endpoint URL:",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp
+                        )
+                        OutlinedTextField(
+                            value = inputUrlText,
+                            onValueChange = { inputUrlText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+                            label = { Text("API Endpoint URL") },
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Button(
+                            onClick = { inputUrlText = "https://nhut0902-chatbotai.hf.space/chat" },
+                            colors = ButtonDefaults.filledTonalButtonColors(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Khôi phục mặc định", fontSize = 11.sp)
+                        }
+                    } else {
+                        // Nvidia NIM configuration view
+                        Text(
+                            text = "NVIDIA NIM API Key:",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp
+                        )
+                        OutlinedTextField(
+                            value = inputApiKeyText,
+                            onValueChange = { inputApiKeyText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+                            label = { Text("API Key (nvapi-...)") },
+                            singleLine = true
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            TextButton(
+                                onClick = { 
+                                    inputApiKeyText = "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" 
+                                    Toast.makeText(context, "Đã khôi phục API Key mặc định của hệ thống", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Text("Khôi phục API Key mặc định", fontSize = 10.sp)
+                            }
+                        }
+
+                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        Text(
+                            text = "Chọn mô hình NVIDIA AI NIM:",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp
+                        )
+
+                        val nimModels = listOf(
+                            "nvidia/llama-3.1-nemotron-70b-instruct" to "Nemotron 70B (Khuyên Dùng)",
+                            "meta/llama-3.1-8b-instruct" to "Llama 3.1 8B (Nhanh)",
+                            "meta/llama-3.1-70b-instruct" to "Llama 3.1 70B (Mạnh)",
+                            "meta/llama-3.1-405b-instruct" to "Llama 3.1 405B (Rất Lớn)",
+                            "mistralai/mixtral-8x22b-instruct-v0.1" to "Mixtral 8x22B (Đa Dạng)"
+                        )
+
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            nimModels.forEach { (modelId, label) ->
+                                val isSelected = selectedNvidiaModel == modelId && customModelInput.trim().isEmpty()
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedNvidiaModel = modelId
+                                            customModelInput = ""
+                                        },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelected) Color(0xFF76B900).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                    ),
+                                    border = if (isSelected) BorderStroke(1.dp, Color(0xFF76B900)) else null
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = isSelected,
+                                            onClick = {
+                                                selectedNvidiaModel = modelId
+                                                customModelInput = ""
+                                            },
+                                            colors = RadioButtonDefaults.colors(
+                                                selectedColor = Color(0xFF76B900)
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Column {
+                                            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(modelId, fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        // Custom model name field
+                        OutlinedTextField(
+                            value = customModelInput,
+                            onValueChange = {
+                                customModelInput = it
+                                if (it.trim().isNotEmpty()) {
+                                    selectedNvidiaModel = it.trim()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Nhập mô hình tùy chỉnh khác", fontSize = 10.sp) },
+                            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+                            singleLine = true
+                        )
                     }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        if (inputUrlText.trim().isNotEmpty()) {
-                            chatViewModel.updateApiUrl(inputUrlText)
-                            Toast.makeText(context, "Đã lưu cấu hình endpoint mới!", Toast.LENGTH_SHORT).show()
+                        chatViewModel.updateServiceType(selectedServiceType)
+                        if (selectedServiceType == "nvidia") {
+                            val apiKeyToSave = if (inputApiKeyText.trim().isNotEmpty()) inputApiKeyText.trim() else "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"
+                            chatViewModel.updateNvidiaApiKey(apiKeyToSave)
+                            
+                            val modelToSave = if (customModelInput.trim().isNotEmpty()) customModelInput.trim() else selectedNvidiaModel
+                            chatViewModel.updateNvidiaModel(modelToSave)
+                            Toast.makeText(context, "Đã lưu cấu hình NVIDIA NIM!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            if (inputUrlText.trim().isNotEmpty()) {
+                                chatViewModel.updateApiUrl(inputUrlText)
+                                Toast.makeText(context, "Đã lưu cấu hình Hugging Face mới!", Toast.LENGTH_SHORT).show()
+                            }
                         }
                         showConfigDialog = false
                     }
@@ -552,7 +776,7 @@ fun ChatBotAiView(
             },
             dismissButton = {
                 TextButton(onClick = { showConfigDialog = false }) {
-                    Text("Đóng")
+                    Text("Hủy")
                 }
             }
         )
