@@ -17,6 +17,7 @@ import android.widget.Toast
 @Composable
 fun TikTokDownloaderView(onBack: () -> Unit) {
     var url by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
     val context = LocalContext.current
     
     Column(modifier = Modifier
@@ -49,15 +50,22 @@ fun TikTokDownloaderView(onBack: () -> Unit) {
         Button(
             onClick = {
                 if (url.contains("tiktok.com")) {
+                    isLoading = true
                     Toast.makeText(context, "Đang xử lý tách watermark...", Toast.LENGTH_SHORT).show()
+                    // Simulate processing
                 } else {
                     Toast.makeText(context, "Link không hợp lệ", Toast.LENGTH_SHORT).show()
                 }
             },
             modifier = Modifier.fillMaxWidth().height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0050))
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0050)),
+            enabled = !isLoading
         ) {
-            Text("Tải xuống", fontWeight = FontWeight.Bold)
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+            } else {
+                Text("Tải xuống", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
