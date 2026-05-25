@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -72,7 +73,7 @@ fun AppListScreen(
 
     Scaffold(
         topBar = {
-            if (selectedTab == 0 || activeUtilId == null) {
+            if (selectedTab == 0 || (selectedTab == 2 && activeUtilId == null)) {
                 LargeTopAppBar(
                     title = {
                         Column {
@@ -105,7 +106,7 @@ fun AppListScreen(
             }
         },
         bottomBar = {
-            if (selectedTab == 0 || activeUtilId == null) {
+            if (activeUtilId == null) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                 ) {
@@ -118,6 +119,12 @@ fun AppListScreen(
                     NavigationBarItem(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
+                        icon = { Icon(Icons.Default.Chat, contentDescription = "Trợ lý AI") },
+                        label = { Text("Trợ lý AI") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
                         icon = { Icon(Icons.Default.Widgets, contentDescription = "Tiện ích") },
                         label = { Text("Tiện ích") }
                     )
@@ -332,6 +339,10 @@ fun AppListScreen(
                     }
                 }
             }
+        } else if (selectedTab == 1) {
+            ChatBotAiView(
+                onBack = { selectedTab = 0 }
+            )
         } else {
             UtilitiesScreen(
                 viewModel = viewModel,

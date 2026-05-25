@@ -6,11 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.model.LockedApp
 import com.example.model.SecurityLog
+import com.example.model.ChatMessage
 
-@Database(entities = [LockedApp::class, SecurityLog::class], version = 2, exportSchema = false)
+@Database(entities = [LockedApp::class, SecurityLog::class, ChatMessage::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract val lockedAppDao: LockedAppDao
     abstract val securityLogDao: SecurityLogDao
+    abstract val chatMessageDao: ChatMessageDao
 
     companion object {
         @Volatile
