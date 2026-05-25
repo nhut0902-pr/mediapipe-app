@@ -161,7 +161,7 @@ class AppLockViewModel(application: Application) : AndroidViewModel(application)
 
     private val utilityKeys = listOf(
         "calendar", "calculator", "notes", "stopwatch", "flashlight",
-        "password", "qrcode", "heartrate", "tiktok"
+        "password", "qrcode", "heartrate", "multiplatform"
     )
 
     fun loadDownloadedUtilities() {

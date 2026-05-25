@@ -88,7 +88,7 @@ fun UtilitiesScreen(
             UtilityMeta("password", "Trình tạo mật khẩu Cực mạnh", "Sản sinh mật khẩu bảo mật tuyệt đối với tùy chọn độ dài, chữ số, ký tự đặc biệt và sao chép 1 chạm.", Icons.Default.VpnKey, "0.5 MB"),
             UtilityMeta("qrcode", "Tạo và Quét mã QR", "Tạo mã QR tùy biến từ văn bản/đường dẫn url cá nhân và trình quét mô phỏng hiệu ứng laser chuyên nghiệp.", Icons.Default.QrCode, "1.3 MB"),
             UtilityMeta("heartrate", "Đo nhịp tim sinh học PPG", "Công cụ đo nhịp tim bằng camera và đèn Flash thông qua phân tích biến thiên hồng cầu dưới da ngón tay.", Icons.Default.Favorite, "1.4 MB"),
-            UtilityMeta("tiktok", "Tải video TikTok không logo", "Công cụ hỗ trợ tải video và ảnh từ TikTok không chứa logo/watermark.", Icons.Default.Download, "2.2 MB")
+            UtilityMeta("multiplatform", "Tải video, ảnh đa nền tảng (beta)", "Công cụ hỗ trợ tải video và ảnh từ TikTok, Facebook, Instagram, Twitter... không chứa watermark.", Icons.Default.Download, "2.2 MB")
         )
     }
 
@@ -105,7 +105,7 @@ fun UtilitiesScreen(
                 "password" -> PasswordGeneratorView(onBack = { onActiveUtilIdChange(null) })
                 "qrcode" -> QrCodeView(onBack = { onActiveUtilIdChange(null) })
                 "heartrate" -> HeartRateView(onBack = { onActiveUtilIdChange(null) })
-                "tiktok" -> TikTokDownloaderView(onBack = { onActiveUtilIdChange(null) })
+                "multiplatform" -> MultiPlatformDownloaderView(onBack = { onActiveUtilIdChange(null) })
             }
         } else {
             Column(
