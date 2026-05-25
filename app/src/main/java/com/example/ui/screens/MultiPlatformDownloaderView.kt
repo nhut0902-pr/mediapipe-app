@@ -151,14 +151,26 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                     coroutineScope.launch {
                         try {
                             val response = withContext(Dispatchers.IO) {
-                                val json = """{"url":"$url"}"""
-                                val request = Request.Builder()
-                                    .url("https://cobalt-10-yf7k.onrender.com/")
-                                    .addHeader("Accept", "application/json")
-                                    .addHeader("Content-Type", "application/json")
-                                    .post(json.toRequestBody("application/json".toMediaType()))
-                                    .build()
-                                client.newCall(request).execute()
+                                if (detectedPlatform == "TikTok") {
+                                    val requestBody = okhttp3.FormBody.Builder()
+                                        .add("url", url)
+                                        .build()
+                                    val request = Request.Builder()
+                                        .url("https://www.tikwm.com/api/")
+                                        .post(requestBody)
+                                        .build()
+                                    client.newCall(request).execute()
+                                } else {
+                                    val json = JSONObject().apply {
+                                        put("url", url)
+                                    }.toString()
+                                    val request = Request.Builder()
+                                        .url("https://cobalt-10-yf7k.onrender.com/")
+                                        .header("Accept", "application/json")
+                                        .post(json.toRequestBody("application/json".toMediaType()))
+                                        .build()
+                                    client.newCall(request).execute()
+                                }
                             }
                             
                             val resultString = response.body?.string()
@@ -166,35 +178,61 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                             if (response.isSuccessful && !resultString.isNullOrEmpty()) {
                                 try {
                                     val jsonObj = JSONObject(resultString)
-                                    val status = jsonObj.optString("status")
                                     
-                                    when (status) {
-                                        "stream", "redirect" -> {
-                                            val downloadUrl = jsonObj.getString("url")
-                                            mediaItems = listOf(mapOf("url" to downloadUrl, "type" to "video"))
-                                        }
-                                        "picker" -> {
-                                            val pickerArray = jsonObj.getJSONArray("picker")
-                                            val items = mutableListOf<Map<String, String>>()
-                                            for (i in 0 until pickerArray.length()) {
-                                                val item = pickerArray.getJSONObject(i)
-                                                items.add(mapOf(
-                                                    "url" to item.getString("url"),
-                                                    "type" to item.optString("type", "photo")
-                                                ))
+                                    if (jsonObj.has("code") && jsonObj.optInt("code", -1) == 0) {
+                                        // TikWM API response
+                                        val data = jsonObj.getJSONObject("data")
+                                        val items = mutableListOf<Map<String, String>>()
+                                        
+                                        if (data.has("images")) {
+                                            val images = data.getJSONArray("images")
+                                            for (i in 0 until images.length()) {
+                                                items.add(mapOf("url" to images.getString(i), "type" to "photo"))
                                             }
+                                        } else if (data.has("play")) {
+                                            items.add(mapOf("url" to data.getString("play"), "type" to "video"))
+                                        }
+                                        
+                                        if (items.isNotEmpty()) {
                                             mediaItems = items
+                                        } else {
+                                            Toast.makeText(context, "Không tìm thấy media", Toast.LENGTH_SHORT).show()
                                         }
-                                        "error" -> {
-                                            val text = jsonObj.optString("text", "Lỗi không xác định")
-                                            Toast.makeText(context, "Lỗi: $text", Toast.LENGTH_LONG).show()
-                                        }
-                                        else -> {
-                                            if (jsonObj.has("url")) {
+                                    } else {
+                                        // Cobalt API response
+                                        val status = jsonObj.optString("status")
+                                        
+                                        when (status) {
+                                            "stream", "redirect" -> {
                                                 val downloadUrl = jsonObj.getString("url")
                                                 mediaItems = listOf(mapOf("url" to downloadUrl, "type" to "video"))
-                                            } else {
-                                                Toast.makeText(context, "Không thể xử lý phản hồi: $status", Toast.LENGTH_SHORT).show()
+                                            }
+                                            "picker" -> {
+                                                val pickerArray = jsonObj.getJSONArray("picker")
+                                                val items = mutableListOf<Map<String, String>>()
+                                                for (i in 0 until pickerArray.length()) {
+                                                    val item = pickerArray.getJSONObject(i)
+                                                    items.add(mapOf(
+                                                        "url" to item.getString("url"),
+                                                        "type" to item.optString("type", "photo")
+                                                    ))
+                                                }
+                                                mediaItems = items
+                                            }
+                                            "error" -> {
+                                                val errorObj = jsonObj.optJSONObject("error")
+                                                val text = errorObj?.optString("code") ?: jsonObj.optString("text", "Lỗi không xác định")
+                                                Toast.makeText(context, "Lỗi API Server: $text", Toast.LENGTH_LONG).show()
+                                            }
+                                            else -> {
+                                                if (jsonObj.has("url")) {
+                                                    val downloadUrl = jsonObj.getString("url")
+                                                    mediaItems = listOf(mapOf("url" to downloadUrl, "type" to "video"))
+                                                } else if (jsonObj.has("msg")) {
+                                                     Toast.makeText(context, "Lỗi: ${jsonObj.getString("msg")}", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(context, "Không thể xử lý phản hồi: $status", Toast.LENGTH_SHORT).show()
+                                                }
                                             }
                                         }
                                     }
