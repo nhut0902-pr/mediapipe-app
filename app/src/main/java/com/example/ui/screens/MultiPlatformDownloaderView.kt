@@ -30,17 +30,50 @@ import org.json.JSONObject
 fun MultiPlatformDownloaderView(onBack: () -> Unit) {
     var url by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var detectedPlatform by remember { mutableStateOf("") }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     
     val client = remember { OkHttpClient() }
     
-    fun downloadVideo(videoUrl: String) {
+    fun getPlatform(link: String): String {
+        return when {
+            link.contains("tiktok.com") -> "TikTok"
+            link.contains("facebook.com") || link.contains("fb.watch") -> "Facebook"
+            link.contains("instagram.com") -> "Instagram"
+            link.contains("twitter.com") || link.contains("x.com") -> "Twitter/X"
+            link.contains("youtube.com") || link.contains("youtu.be") -> "YouTube"
+            link.contains("bilibili.com") || link.contains("b23.tv") -> "Bilibili"
+            link.contains("reddit.com") -> "Reddit"
+            link.contains("pinterest.com") || link.contains("pin.it") -> "Pinterest"
+            link.contains("twitch.tv") -> "Twitch"
+            link.contains("vimeo.com") -> "Vimeo"
+            link.contains("snapchat.com") -> "Snapchat"
+            link.contains("tumblr.com") -> "Tumblr"
+            link.contains("soundcloud.com") -> "SoundCloud"
+            link.contains("dailymotion.com") -> "Dailymotion"
+            link.contains("vk.com") || link.contains("vkvideo.ru") -> "VK"
+            link.contains("loom.com") -> "Loom"
+            link.contains("ok.ru") -> "OK.ru"
+            link.contains("rutube.ru") -> "Rutube"
+            link.contains("streamable.com") -> "Streamable"
+            link.contains("bluesky") || link.contains("bsky.app") -> "Bluesky"
+            link.contains("xiaohongshu.com") -> "Xiaohongshu"
+            link.isNotBlank() -> "Không xác định"
+            else -> ""
+        }
+    }
+    
+    LaunchedEffect(url) {
+        detectedPlatform = getPlatform(url)
+    }
+
+    fun downloadVideo(videoUrl: String, fileName: String = "video_${System.currentTimeMillis()}.mp4") {
         try {
             val request = DownloadManager.Request(Uri.parse(videoUrl))
-            request.setTitle("Đang tải video")
+            request.setTitle("Đang tải tệp")
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "video_${System.currentTimeMillis()}.mp4")
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
             
             val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             manager.enqueue(request)
@@ -75,6 +108,15 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
             colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Color(0xFFFF0050), unfocusedBorderColor = Color.LightGray)
         )
         
+        if (detectedPlatform.isNotEmpty()) {
+            Text(
+                text = "Nền tảng: $detectedPlatform",
+                color = Color.Gray,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+        
         Spacer(modifier = Modifier.height(16.dp))
         
         Button(
@@ -101,23 +143,45 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                                     val jsonObj = JSONObject(resultString)
                                     val status = jsonObj.optString("status")
                                     
-                                    if (status == "stream" || status == "redirect") {
-                                        val downloadUrl = jsonObj.getString("url")
-                                        downloadVideo(downloadUrl)
-                                    } else if (jsonObj.has("url")) {
-                                        val downloadUrl = jsonObj.getString("url")
-                                        downloadVideo(downloadUrl)
-                                    } else {
-                                        Toast.makeText(context, "Không thể tải: $status", Toast.LENGTH_SHORT).show()
+                                    when (status) {
+                                        "stream", "redirect" -> {
+                                            val downloadUrl = jsonObj.getString("url")
+                                            downloadVideo(downloadUrl)
+                                        }
+                                        "picker" -> {
+                                            val pickerArray = jsonObj.getJSONArray("picker")
+                                            Toast.makeText(context, "Tìm thấy ${pickerArray.length()} tệp. Đang tải...", Toast.LENGTH_SHORT).show()
+                                            for (i in 0 until pickerArray.length()) {
+                                                val item = pickerArray.getJSONObject(i)
+                                                val type = item.optString("type", "file")
+                                                val ext = if (type == "photo") "jpg" else "mp4"
+                                                val downloadUrl = item.getString("url")
+                                                downloadVideo(downloadUrl, "media_${System.currentTimeMillis()}_$i.$ext")
+                                            }
+                                        }
+                                        "error" -> {
+                                            val text = jsonObj.optString("text", "Lỗi không xác định")
+                                            Toast.makeText(context, "Lỗi: $text", Toast.LENGTH_LONG).show()
+                                        }
+                                        else -> {
+                                            if (jsonObj.has("url")) {
+                                                val downloadUrl = jsonObj.getString("url")
+                                                downloadVideo(downloadUrl)
+                                            } else {
+                                                Toast.makeText(context, "Không thể xử lý phản hồi: $status", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Lỗi phân tích: ${e.message}", Toast.LENGTH_SHORT).show()
                                 }
                             } else {
-                                Toast.makeText(context, "Lỗi API: ${response.code}", Toast.LENGTH_SHORT).show()
+                                val errorObj = try { JSONObject(resultString ?: "") } catch (e: Exception) { null }
+                                val errorMsg = errorObj?.optString("text", "Lỗi API: ${response.code}") ?: "Lỗi API: ${response.code}"
+                                Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
                             }
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Lỗi kết nối: ${e.message}", Toast.LENGTH_SHORT).show()
                         } finally {
                             isLoading = false
                         }
