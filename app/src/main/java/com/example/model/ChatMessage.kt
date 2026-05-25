@@ -8,5 +8,9 @@ data class ChatMessage(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val text: String,
     val isUser: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val attachmentUri: String? = null,
+    val attachmentName: String? = null,
+    val attachmentType: String? = null // "image", "document"
 )
+

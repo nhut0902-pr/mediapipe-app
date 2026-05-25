@@ -1,6 +1,9 @@
 package com.example.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import coil.compose.AsyncImage
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -71,6 +74,30 @@ fun ChatBotAiView(
     var customModelInput by remember { mutableStateOf("") }
     var messageInput by remember { mutableStateOf("") }
 
+    var selectedAttachmentUri by remember { mutableStateOf<String?>(null) }
+    var selectedAttachmentName by remember { mutableStateOf<String?>(null) }
+    var selectedAttachmentType by remember { mutableStateOf<String?>(null) } // "image" or "document"
+
+    val selectImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            selectedAttachmentUri = uri.toString()
+            selectedAttachmentName = getFileNameHelper(context, uri)
+            selectedAttachmentType = "image"
+        }
+    }
+
+    val selectDocLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            selectedAttachmentUri = uri.toString()
+            selectedAttachmentName = getFileNameHelper(context, uri)
+            selectedAttachmentType = "document"
+        }
+    }
+
     LaunchedEffect(showConfigDialog) {
         if (showConfigDialog) {
             inputUrlText = apiUrl
@@ -78,11 +105,17 @@ fun ChatBotAiView(
             selectedServiceType = serviceType
             selectedNvidiaModel = nvidiaModel
             customModelInput = if (nvidiaModel !in listOf(
-                    "nvidia/llama-3.1-nemotron-70b-instruct",
-                    "meta/llama-3.1-8b-instruct",
+                    "google/gemma-2-27b-it",
+                    "moonshotai/k2.5-thinking",
+                    "deepseek-ai/deepseek-v3",
+                    "nvidia/nemotron-4-340b-instruct",
+                    "thm/glm-4-9b-chat",
                     "meta/llama-3.1-70b-instruct",
-                    "meta/llama-3.1-405b-instruct",
-                    "mistralai/mixtral-8x22b-instruct-v0.1"
+                    "meta/llama-3.1-8b-instruct",
+                    "qwen/qwen-vl-max",
+                    "nvidia/llama-3.1-70b-instruct-vl",
+                    "personaplex-7b-v1",
+                    "nvidia/parakeet-ctc-0.6b"
                 )) nvidiaModel else ""
         }
     }
@@ -383,6 +416,68 @@ fun ChatBotAiView(
                                         Column(
                                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                                         ) {
+                                            if (item.attachmentUri != null) {
+                                                if (item.attachmentType == "image") {
+                                                    Card(
+                                                        shape = RoundedCornerShape(12.dp),
+                                                        modifier = Modifier
+                                                            .padding(bottom = 8.dp)
+                                                            .fillMaxWidth()
+                                                            .heightIn(max = 200.dp),
+                                                        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.05f))
+                                                    ) {
+                                                        AsyncImage(
+                                                            model = item.attachmentUri,
+                                                            contentDescription = item.attachmentName ?: "Attached Image",
+                                                            modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
+                                                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                                        )
+                                                    }
+                                                    Text(
+                                                        text = item.attachmentName ?: "image.png",
+                                                        fontSize = 11.sp,
+                                                        fontStyle = FontStyle.Italic,
+                                                        color = contentColor.copy(alpha = 0.7f),
+                                                        modifier = Modifier.padding(bottom = 8.dp)
+                                                    )
+                                                } else {
+                                                    Card(
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        modifier = Modifier
+                                                            .padding(bottom = 8.dp)
+                                                            .fillMaxWidth(),
+                                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                                                        border = BorderStroke(1.dp, contentColor.copy(alpha = 0.15f))
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(10.dp),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Description,
+                                                                contentDescription = null,
+                                                                tint = MaterialTheme.colorScheme.primary,
+                                                                modifier = Modifier.size(24.dp)
+                                                            )
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                            Column(modifier = Modifier.weight(1f)) {
+                                                                Text(
+                                                                    text = item.attachmentName ?: "document.txt",
+                                                                    fontSize = 13.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = contentColor
+                                                                )
+                                                                Text(
+                                                                    text = "Tập tin tài liệu",
+                                                                    fontSize = 10.sp,
+                                                                    color = contentColor.copy(alpha = 0.6f)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
                                             when (item) {
                                                 is ChatMessageItem.Temporary -> {
                                                     if (item.isThinking) {
@@ -418,7 +513,9 @@ fun ChatBotAiView(
                                                     }
                                                 }
                                                 is ChatMessageItem.Persisted -> {
-                                                    MarkdownText(text = item.text, color = contentColor)
+                                                    if (item.text.isNotEmpty()) {
+                                                        MarkdownText(text = item.text, color = contentColor)
+                                                    }
                                                 }
                                             }
                                         }
@@ -498,6 +595,87 @@ fun ChatBotAiView(
                             }
                         }
 
+                        // Draft attachment preview container
+                        AnimatedVisibility(
+                            visible = selectedAttachmentUri != null,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = cardAiBg
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (selectedAttachmentType == "image") {
+                                        Card(
+                                            modifier = Modifier.size(46.dp),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            AsyncImage(
+                                                model = selectedAttachmentUri,
+                                                contentDescription = "Selected Attachment",
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                            )
+                                        }
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Description,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = selectedAttachmentName ?: "file",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = onAppBg,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = if (selectedAttachmentType == "image") "Hình ảnh sẵn sàng gửi" else "Tài liệu sẵn sàng phân tích",
+                                            fontSize = 11.sp,
+                                            color = onAppBg.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            selectedAttachmentUri = null
+                                            selectedAttachmentName = null
+                                            selectedAttachmentType = null
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Hủy đính kèm",
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         // Message Text Field Input row
                         Row(
                             modifier = Modifier
@@ -508,6 +686,30 @@ fun ChatBotAiView(
                                 .padding(horizontal = 6.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            IconButton(
+                                onClick = { selectImageLauncher.launch("image/*") },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AddPhotoAlternate,
+                                    contentDescription = "Chọn hình ảnh",
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { selectDocLauncher.launch("*/*") },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AttachFile,
+                                    contentDescription = "Chọn tài liệu",
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
                             TextField(
                                 value = messageInput,
                                 onValueChange = { messageInput = it },
@@ -529,22 +731,31 @@ fun ChatBotAiView(
                                 ),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .padding(horizontal = 8.dp),
+                                    .padding(horizontal = 4.dp),
                                 maxLines = 4
                             )
 
                             // Animated send action button
+                            val isInputEmpty = messageInput.trim().isEmpty() && selectedAttachmentUri == null
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (messageInput.trim().isNotEmpty() && !isGenerating) cardUserBg else Color.Gray.copy(alpha = 0.3f)
+                                        if (!isInputEmpty && !isGenerating) cardUserBg else Color.Gray.copy(alpha = 0.3f)
                                     )
-                                    .clickable(enabled = messageInput.trim().isNotEmpty() && !isGenerating) {
+                                    .clickable(enabled = !isInputEmpty && !isGenerating) {
                                         val textToSend = messageInput
+                                        val uriToSend = selectedAttachmentUri
+                                        val nameToSend = selectedAttachmentName
+                                        val typeToSend = selectedAttachmentType
+
                                         messageInput = ""
-                                        chatViewModel.sendMessage(textToSend)
+                                        selectedAttachmentUri = null
+                                        selectedAttachmentName = null
+                                        selectedAttachmentType = null
+
+                                        chatViewModel.sendMessage(textToSend, uriToSend, nameToSend, typeToSend)
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -683,16 +894,25 @@ fun ChatBotAiView(
                         )
 
                         val nimModels = listOf(
-                            "nvidia/llama-3.1-nemotron-70b-instruct" to "Nemotron 70B (Khuyên Dùng)",
-                            "meta/llama-3.1-8b-instruct" to "Llama 3.1 8B (Nhanh)",
-                            "meta/llama-3.1-70b-instruct" to "Llama 3.1 70B (Mạnh)",
-                            "meta/llama-3.1-405b-instruct" to "Llama 3.1 405B (Rất Lớn)",
-                            "mistralai/mixtral-8x22b-instruct-v0.1" to "Mixtral 8x22B (Đa Dạng)"
+                            "google/gemma-2-27b-it" to "Gemma 4 (31B) Thế Hệ Mới",
+                            "moonshotai/k2.5-thinking" to "Kimi K2.5 Thinking (Logic Suy Luận)",
+                            "deepseek-ai/deepseek-v3" to "DeepSeek-V3 / 3.2 (Toán & Lập Trình)",
+                            "nvidia/nemotron-4-340b-instruct" to "Nemotron-4 340B (Tác Nhân AI)",
+                            "thm/glm-4-9b-chat" to "GLM 5.1 / MiniMax M2.7 (Đa Ngôn Ngữ)",
+                            "meta/llama-3.1-70b-instruct" to "Llama 3.1 70B (Mạnh Mẽ)",
+                            "meta/llama-3.1-8b-instruct" to "Llama 3.1 8B (Nhanh Chóng)",
+                            "qwen/qwen-vl-max" to "Qwen-Image / Edit (Thị Giác Máy)",
+                            "nvidia/llama-3.1-70b-instruct-vl" to "Llama 3.1 Vision (Đa Phương Thức)",
+                            "personaplex-7b-v1" to "PersonaPlex 7B v1 (Đàm Thoại)",
+                            "nvidia/parakeet-ctc-0.6b" to "Parakeet-CTC 0.6B (Nhận Diện Giọng Nói)"
                         )
 
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 240.dp) // Let it scroll when too many models exist
+                                .verticalScroll(rememberScrollState())
                         ) {
                             nimModels.forEach { (modelId, label) ->
                                 val isSelected = selectedNvidiaModel == modelId && customModelInput.trim().isEmpty()
@@ -898,3 +1118,28 @@ fun ThinkingDots(dotColor: Color) {
 }
 
 private fun spacerBefore(): Modifier = Modifier.padding(end = 4.dp)
+
+private fun getFileNameHelper(context: android.content.Context, uri: android.net.Uri): String {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        val cursor = context.contentResolver.query(uri, null, null, null, null)
+        try {
+            if (cursor != null && cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (index != -1) {
+                    result = cursor.getString(index)
+                }
+            }
+        } finally {
+            cursor?.close()
+        }
+    }
+    if (result == null) {
+        result = uri.path
+        val cut = result?.lastIndexOf('/') ?: -1
+        if (cut != -1) {
+            result = result?.substring(cut + 1)
+        }
+    }
+    return result ?: "file"
+}
