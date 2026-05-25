@@ -75,6 +75,16 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
             
+            val mimeType = if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png")) {
+                "image/jpeg"
+            } else {
+                "video/mp4"
+            }
+            request.setMimeType(mimeType)
+            
+            @Suppress("DEPRECATION")
+            request.allowScanningByMediaScanner()
+            
             val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             manager.enqueue(request)
             Toast.makeText(context, "Bắt đầu tải xuống", Toast.LENGTH_SHORT).show()
