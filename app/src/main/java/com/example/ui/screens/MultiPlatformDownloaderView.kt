@@ -16,6 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import coil.ImageLoader
+import coil.decode.VideoFrameDecoder
+import coil.request.ImageRequest
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -89,9 +92,10 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                 "video/mp4"
             }
             request.setMimeType(mimeType)
+            request.addRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            request.addRequestHeader("Accept", "*/*")
             
-            val dirType = if (mimeType.startsWith("image/")) Environment.DIRECTORY_PICTURES else Environment.DIRECTORY_MOVIES
-            request.setDestinationInExternalPublicDir(dirType, fileName)
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
             
             @Suppress("DEPRECATION")
             request.allowScanningByMediaScanner()
@@ -250,11 +254,29 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                                     contentScale = ContentScale.Crop
                                 )
                            } else {
-                                Box(
-                                    modifier = Modifier.size(80.dp).background(Color.DarkGray, RoundedCornerShape(8.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Filled.PlayArrow, contentDescription = "Video", tint = Color.White)
+                                val imageLoader = ImageLoader.Builder(context)
+                                    .components {
+                                        add(VideoFrameDecoder.Factory())
+                                    }
+                                    .crossfade(true)
+                                    .build()
+                                    
+                                Box(modifier = Modifier.size(80.dp)) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(itemUrl)
+                                            .build(),
+                                        imageLoader = imageLoader,
+                                        contentDescription = "Video Thumbnail",
+                                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)).background(Color.DarkGray),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Box(
+                                        modifier = Modifier.align(Alignment.Center).size(30.dp).background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(15.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Filled.PlayArrow, contentDescription = "Video", tint = Color.White, modifier = Modifier.size(20.dp))
+                                    }
                                 }
                            }
                            

@@ -15,8 +15,8 @@ android {
     applicationId = "com.aistudio.gesturegames.vtzrkw"
     minSdk = 26
     targetSdk = 36
-    versionCode = 25
-    versionName = "1.6.9"
+    versionCode = 26
+    versionName = "1.6.10"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -103,6 +103,7 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.coil.compose)
+  implementation(libs.coil.video)
   implementation(libs.converter.moshi)
   // implementation(libs.firebase.ai)
   implementation(libs.kotlinx.coroutines.android)
