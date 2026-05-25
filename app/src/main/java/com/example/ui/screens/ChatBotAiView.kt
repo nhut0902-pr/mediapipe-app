@@ -105,17 +105,14 @@ fun ChatBotAiView(
             selectedServiceType = serviceType
             selectedNvidiaModel = nvidiaModel
             customModelInput = if (nvidiaModel !in listOf(
-                    "google/gemma-2-27b-it",
-                    "moonshotai/k2.5-thinking",
-                    "deepseek-ai/deepseek-v3",
-                    "nvidia/nemotron-4-340b-instruct",
-                    "thm/glm-4-9b-chat",
-                    "meta/llama-3.1-70b-instruct",
+                    "nvidia/llama-3.1-nemotron-70b-instruct",
                     "meta/llama-3.1-8b-instruct",
-                    "qwen/qwen-vl-max",
-                    "nvidia/llama-3.1-70b-instruct-vl",
-                    "personaplex-7b-v1",
-                    "nvidia/parakeet-ctc-0.6b"
+                    "meta/llama-3.1-70b-instruct",
+                    "meta/llama-3.1-405b-instruct",
+                    "google/gemma-2-27b-it",
+                    "google/gemma-2-9b-it",
+                    "mistralai/mixtral-8x22b-instruct-v0.1",
+                    "mistralai/mistral-large-2-instruct"
                 )) nvidiaModel else ""
         }
     }
@@ -894,17 +891,14 @@ fun ChatBotAiView(
                         )
 
                         val nimModels = listOf(
-                            "google/gemma-2-27b-it" to "Gemma 4 (31B) Thế Hệ Mới",
-                            "moonshotai/k2.5-thinking" to "Kimi K2.5 Thinking (Logic Suy Luận)",
-                            "deepseek-ai/deepseek-v3" to "DeepSeek-V3 / 3.2 (Toán & Lập Trình)",
-                            "nvidia/nemotron-4-340b-instruct" to "Nemotron-4 340B (Tác Nhân AI)",
-                            "thm/glm-4-9b-chat" to "GLM 5.1 / MiniMax M2.7 (Đa Ngôn Ngữ)",
-                            "meta/llama-3.1-70b-instruct" to "Llama 3.1 70B (Mạnh Mẽ)",
-                            "meta/llama-3.1-8b-instruct" to "Llama 3.1 8B (Nhanh Chóng)",
-                            "qwen/qwen-vl-max" to "Qwen-Image / Edit (Thị Giác Máy)",
-                            "nvidia/llama-3.1-70b-instruct-vl" to "Llama 3.1 Vision (Đa Phương Thức)",
-                            "personaplex-7b-v1" to "PersonaPlex 7B v1 (Đàm Thoại)",
-                            "nvidia/parakeet-ctc-0.6b" to "Parakeet-CTC 0.6B (Nhận Diện Giọng Nói)"
+                            "nvidia/llama-3.1-nemotron-70b-instruct" to "Nemotron 70B (Khuyên dùng)",
+                            "meta/llama-3.1-8b-instruct" to "Llama 3.1 8B (Nhanh chóng)",
+                            "meta/llama-3.1-70b-instruct" to "Llama 3.1 70B (Rất thông minh)",
+                            "meta/llama-3.1-405b-instruct" to "Llama 3.1 405B (Kích thước cực đại)",
+                            "google/gemma-2-27b-it" to "Gemma 2 27B (Linh hoạt)",
+                            "google/gemma-2-9b-it" to "Gemma 2 9B (Nhỏ gọn)",
+                            "mistralai/mixtral-8x22b-instruct-v0.1" to "Mixtral 8x22B (Đa dạng)",
+                            "mistralai/mistral-large-2-instruct" to "Mistral Large 2 (Đa ngôn ngữ & Lập trình)"
                         )
 
                         Column(
