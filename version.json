@@ -1,7 +1,0 @@
-{
-  "versionCode": 27,
-  "versionName": "1.6.11",
-  "apkUrl": "https://github.com/nhut0902-pr/mediapipe-app/releases/download/v1.6.11/app-release.apk",
-  "forceUpdate": false,
-  "changelog": "Cập nhật ứng dụng lên phiên bản mới 1.6.11. Cải thiện hiệu suất, tối ưu hóa bộ nhớ và sửa lỗi."
-}
