@@ -341,7 +341,8 @@ fun AppListScreen(
             }
         } else if (selectedTab == 1) {
             ChatBotAiView(
-                onBack = { selectedTab = 0 }
+                onBack = { selectedTab = 0 },
+                modifier = Modifier.padding(innerPadding)
             )
         } else {
             UtilitiesScreen(

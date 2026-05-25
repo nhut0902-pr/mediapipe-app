@@ -43,7 +43,8 @@ import com.example.viewmodel.ChatViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatBotAiView(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val chatViewModel: ChatViewModel = viewModel()
     val context = LocalContext.current
@@ -77,7 +78,7 @@ fun ChatBotAiView(
     val borderInputBg = if (isDarkTheme) Color(0xFF26272F) else Color(0xFFE2E4EB)
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         color = appBg
     ) {
         Scaffold(
