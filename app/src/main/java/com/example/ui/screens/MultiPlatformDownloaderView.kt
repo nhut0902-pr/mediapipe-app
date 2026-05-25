@@ -71,6 +71,7 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                                 }
                                 val request = Request.Builder()
                                     .url("https://cobalt-10-yf7k.onrender.com/")
+                                    .addHeader("Accept", "application/json")
                                     .post(json.toString().toRequestBody("application/json".toMediaType()))
                                     .build()
                                 client.newCall(request).execute()
