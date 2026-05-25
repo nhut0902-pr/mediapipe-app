@@ -1,5 +1,10 @@
 package com.example.ui.screens
 
+import android.app.DownloadManager
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -12,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -30,6 +34,21 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
     val coroutineScope = rememberCoroutineScope()
     
     val client = remember { OkHttpClient() }
+    
+    fun downloadVideo(videoUrl: String) {
+        try {
+            val request = DownloadManager.Request(Uri.parse(videoUrl))
+            request.setTitle("Đang tải video")
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "video_${System.currentTimeMillis()}.mp4")
+            
+            val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            manager.enqueue(request)
+            Toast.makeText(context, "Bắt đầu tải xuống", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Lỗi tải xuống: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
     
     Column(modifier = Modifier
         .fillMaxSize()
@@ -65,20 +84,35 @@ fun MultiPlatformDownloaderView(onBack: () -> Unit) {
                     coroutineScope.launch {
                         try {
                             val response = withContext(Dispatchers.IO) {
-                                val json = JSONObject().apply {
-                                    put("url", url)
-                                    put("vQA", true)
-                                }
+                                val json = """{"url":"$url"}"""
                                 val request = Request.Builder()
                                     .url("https://cobalt-10-yf7k.onrender.com/")
                                     .addHeader("Accept", "application/json")
-                                    .post(json.toString().toRequestBody("application/json".toMediaType()))
+                                    .addHeader("Content-Type", "application/json")
+                                    .post(json.toRequestBody("application/json".toMediaType()))
                                     .build()
                                 client.newCall(request).execute()
                             }
                             
-                            if (response.isSuccessful) {
-                                Toast.makeText(context, "Đã gửi link tới Cobalt API!", Toast.LENGTH_SHORT).show()
+                            val resultString = response.body?.string()
+                            
+                            if (response.isSuccessful && !resultString.isNullOrEmpty()) {
+                                try {
+                                    val jsonObj = JSONObject(resultString)
+                                    val status = jsonObj.optString("status")
+                                    
+                                    if (status == "stream" || status == "redirect") {
+                                        val downloadUrl = jsonObj.getString("url")
+                                        downloadVideo(downloadUrl)
+                                    } else if (jsonObj.has("url")) {
+                                        val downloadUrl = jsonObj.getString("url")
+                                        downloadVideo(downloadUrl)
+                                    } else {
+                                        Toast.makeText(context, "Không thể tải: $status", Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Lỗi phân tích: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
                             } else {
                                 Toast.makeText(context, "Lỗi API: ${response.code}", Toast.LENGTH_SHORT).show()
                             }
